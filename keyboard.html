@@ -1,0 +1,1541 @@
+﻿<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>無人機足球・十大術科訓練場</title>
+<style>
+  :root{
+    --ground:#0a0f16; --arena:#0d141f; --panel:#111927; --panel2:#0d1520;
+    --line:#223148; --line-soft:#1a2536;
+    --ink:#e9f1f7; --dim:#8ca3b8; --faint:#5c7186;
+    --hud:#4fe3a3; --hud-dim:#2a8f68;
+    --accent:#ff8a3c; --accent-deep:#e06a1a;
+    --warn:#ff5c5c; --purple:#a78bfa; --blue:#4fa8ff; --green:#39d98a; --red:#ff5c5c; --yellow:#ffd23f;
+    --radius:14px;
+    --mono:Consolas,"Cascadia Mono",monospace;
+    --cjk:"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 70% -10%, rgba(79,168,255,.07), transparent 60%),
+      radial-gradient(900px 500px at 10% 110%, rgba(255,138,60,.06), transparent 60%),
+      var(--ground);
+    color:var(--ink); font-family:var(--cjk);
+    min-height:100vh;
+  }
+  button{font-family:var(--cjk)}
+
+  /* ---------- generic ---------- */
+  .tag{
+    display:inline-block; font-size:.72rem; letter-spacing:.12em; padding:.2em .7em;
+    border:1px solid var(--line); border-radius:999px; color:var(--dim);
+  }
+  .tag.hud{color:var(--hud); border-color:rgba(79,227,163,.4)}
+  .tag.acc{color:var(--accent); border-color:rgba(255,138,60,.45)}
+  .btn{
+    cursor:pointer; border:1px solid var(--line); background:var(--panel);
+    color:var(--ink); border-radius:10px; padding:.55em 1.1em; font-size:.95rem;
+    transition:border-color .15s, background .15s;
+  }
+  .btn:hover{border-color:var(--hud-dim)}
+  .btn:focus-visible,.mcard:focus-visible{outline:2px solid var(--hud); outline-offset:2px}
+  .btn.primary{
+    background:linear-gradient(180deg, #ff9a52, var(--accent-deep));
+    border-color:var(--accent-deep); color:#1a0d02; font-weight:700;
+  }
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.ghost{background:transparent}
+
+  /* ---------- menu ---------- */
+  #menu{max-width:1060px; margin:0 auto; padding:34px 22px 60px}
+  .hero{display:flex; flex-wrap:wrap; align-items:flex-end; gap:18px 28px; margin-bottom:8px}
+  .hero h1{
+    font-size:clamp(1.7rem,4.4vw,2.7rem); line-height:1.15; margin:.4em 0 .1em;
+    font-weight:900; letter-spacing:.02em; text-wrap:balance;
+  }
+  .hero h1 .accent{color:var(--accent)}
+  .kicker{font-family:var(--mono); color:var(--hud); font-size:.8rem; letter-spacing:.28em}
+  .hero p.lead{color:var(--dim); max-width:34em; line-height:1.75; margin:.4em 0 0; font-size:.95rem}
+  .hero-side{margin-left:auto; display:flex; flex-direction:column; gap:10px; align-items:flex-end}
+  .totalstars{font-family:var(--mono); color:var(--yellow); font-size:1.05rem}
+  .totalstars small{color:var(--faint); font-size:.72rem; letter-spacing:.1em; display:block; text-align:right}
+
+  .ctrl-strip{
+    display:flex; flex-wrap:wrap; gap:10px 22px; align-items:center;
+    border:1px solid var(--line-soft); background:var(--panel2); border-radius:var(--radius);
+    padding:12px 18px; margin:22px 0 30px; font-size:.85rem; color:var(--dim);
+  }
+  .ctrl-strip b{color:var(--ink); font-weight:700}
+  .kbd{font-family:var(--mono); background:#1a2434; border:1px solid var(--line); border-bottom-width:2px;
+    border-radius:5px; padding:.06em .45em; color:var(--hud); font-size:.82em}
+
+  .stage{margin-bottom:34px}
+  .stage-head{display:flex; align-items:baseline; gap:14px; margin-bottom:14px; flex-wrap:wrap}
+  .stage-head .no{font-family:var(--mono); font-size:.78rem; letter-spacing:.2em; color:var(--faint)}
+  .stage-head h2{margin:0; font-size:1.15rem; font-weight:800}
+  .stage-head .rule{flex:1; height:1px; background:linear-gradient(90deg,var(--line),transparent); min-width:60px}
+  .stage.s1 .stage-head h2{color:var(--hud)}
+  .stage.s2 .stage-head h2{color:var(--accent)}
+
+  .mgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(185px,1fr)); gap:12px}
+  .mcard{
+    text-align:left; cursor:pointer; position:relative;
+    border:1px solid var(--line-soft); background:var(--panel); border-radius:var(--radius);
+    padding:14px 14px 12px; color:var(--ink); transition:transform .15s, border-color .15s;
+    display:flex; flex-direction:column; gap:6px; min-height:118px;
+  }
+  .mcard:hover:not(.locked){transform:translateY(-2px); border-color:var(--hud-dim)}
+  .stage.s2 .mcard:hover:not(.locked){border-color:var(--accent-deep)}
+  .mcard .num{font-family:var(--mono); font-size:.72rem; color:var(--faint); letter-spacing:.15em}
+  .mcard .nm{font-weight:800; font-size:.98rem; line-height:1.35; text-wrap:balance}
+  .mcard .skill{font-size:.74rem; color:var(--dim); line-height:1.5}
+  .mcard .stars{margin-top:auto; font-size:.9rem; letter-spacing:.15em; color:var(--yellow)}
+  .mcard .stars .off{color:#33415a}
+  .mcard.locked{opacity:.45; cursor:not-allowed}
+  .mcard.locked .nm::after{content:" 🔒"; font-size:.8em}
+  .menu-foot{display:flex; gap:12px; flex-wrap:wrap; margin-top:6px; align-items:center}
+  .menu-foot .sp{flex:1}
+  .credit{color:var(--faint); font-size:.75rem}
+
+  /* ---------- game ---------- */
+  #game{display:none; max-width:1160px; margin:0 auto; padding:16px 16px 30px}
+  .topbar{display:flex; align-items:center; gap:14px; margin-bottom:12px; flex-wrap:wrap}
+  .topbar .mtitle{font-weight:800; font-size:1.05rem}
+  .topbar .msub{color:var(--dim); font-size:.8rem}
+  .topbar .sp{flex:1}
+  .readout{font-family:var(--mono); color:var(--hud); font-size:.95rem; font-variant-numeric:tabular-nums}
+  .readout small{color:var(--faint); font-size:.68rem; letter-spacing:.15em; margin-right:.4em}
+  .readout.warnc{color:var(--warn)}
+
+  .gwrap{display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:14px}
+  @media (max-width:900px){ .gwrap{grid-template-columns:1fr} }
+  .arena-wrap{
+    position:relative; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;
+    background:var(--arena); aspect-ratio:1/1; max-height:78vh; margin:0 auto; width:100%; max-width:78vh;
+  }
+  canvas#cv{display:block; width:100%; height:100%; touch-action:none}
+  .warnflash{
+    position:absolute; top:10px; left:50%; transform:translateX(-50%);
+    background:rgba(255,92,92,.14); border:1px solid rgba(255,92,92,.55); color:#ffb3b3;
+    font-size:.85rem; padding:.3em 1em; border-radius:999px; pointer-events:none; opacity:0;
+    transition:opacity .2s; white-space:nowrap;
+  }
+  .warnflash.on{opacity:1}
+
+  .side{display:flex; flex-direction:column; gap:12px; min-width:0}
+  .panelbox{border:1px solid var(--line-soft); background:var(--panel); border-radius:var(--radius); padding:14px 16px}
+  .panelbox h3{margin:0 0 10px; font-size:.78rem; letter-spacing:.2em; color:var(--faint); font-weight:700}
+  .goal-main{font-size:.92rem; line-height:1.7; color:var(--ink)}
+  ul.steps{list-style:none; margin:10px 0 0; padding:0; display:flex; flex-direction:column; gap:7px}
+  ul.steps li{
+    display:flex; gap:9px; align-items:baseline; font-size:.85rem; color:var(--dim); line-height:1.5;
+  }
+  ul.steps li::before{
+    content:"○"; color:var(--faint); font-size:.8em; flex:none; font-family:var(--mono);
+  }
+  ul.steps li.cur{color:var(--ink)}
+  ul.steps li.cur::before{content:"▶"; color:var(--accent)}
+  ul.steps li.done{color:var(--hud)}
+  ul.steps li.done::before{content:"✓"; color:var(--hud)}
+  .coach{font-size:.83rem; color:var(--dim); line-height:1.75}
+  .coach b{color:var(--accent); font-weight:700}
+  .databar{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px}
+  .datum{background:var(--panel2); border:1px solid var(--line-soft); border-radius:10px; padding:8px 10px}
+  .datum .lb{font-size:.62rem; letter-spacing:.18em; color:var(--faint)}
+  .datum .vl{font-family:var(--mono); font-size:1.05rem; color:var(--hud); font-variant-numeric:tabular-nums}
+  .datum .vl.warnc{color:var(--warn)}
+
+  /* sticks */
+  .sticksrow{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:2px}
+  .stick{
+    position:relative; aspect-ratio:1/1; max-width:132px; margin:0 auto; width:100%;
+    background:radial-gradient(circle at 50% 40%, #16202f, #0c1320);
+    border:1px solid var(--line); border-radius:50%; touch-action:none; cursor:grab;
+  }
+  .stick .knob{
+    position:absolute; width:38%; height:38%; left:31%; top:31%;
+    background:radial-gradient(circle at 35% 30%, #33465f, #17222f);
+    border:1px solid #3a4d68; border-radius:50%; pointer-events:none;
+    box-shadow:0 3px 10px rgba(0,0,0,.5);
+  }
+  .stick .axis{position:absolute; inset:12%; border-radius:50%; border:1px dashed #23324a; pointer-events:none}
+  .sticklb{text-align:center; font-size:.68rem; color:var(--faint); letter-spacing:.1em; margin-top:5px; line-height:1.6}
+  .sticklb b{color:var(--dim)}
+  .actionrow{display:flex; gap:8px; margin-top:10px}
+  .actionrow .btn{flex:1; font-size:.85rem; padding:.5em .4em}
+  .btn.cut{border-color:#6b2a2a; color:#ff9c9c; background:#1d1214}
+  .btn.cut:hover{border-color:var(--warn)}
+
+  /* overlays */
+  .ovl{
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(5,8,13,.78); z-index:50; padding:20px; backdrop-filter:blur(3px);
+  }
+  .ovl.show{display:flex}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:26px 30px; max-width:480px; width:100%; max-height:88vh; overflow-y:auto;
+  }
+  .card h2{margin:0 0 4px; font-size:1.3rem; font-weight:900; text-wrap:balance}
+  .card .sub{color:var(--dim); font-size:.85rem; margin-bottom:14px}
+  .bigstars{font-size:2.1rem; letter-spacing:.18em; color:var(--yellow); margin:10px 0 4px}
+  .bigstars .off{color:#2c3a52}
+  .result-line{font-family:var(--mono); color:var(--hud); font-size:.95rem; margin-bottom:2px}
+  .verdict{color:var(--dim); font-size:.9rem; line-height:1.75; margin:12px 0 18px}
+  .btnrow{display:flex; gap:10px; flex-wrap:wrap}
+  .brief-goal{
+    background:var(--panel2); border:1px solid var(--line-soft); border-left:3px solid var(--accent);
+    border-radius:10px; padding:12px 15px; font-size:.92rem; line-height:1.8; margin:14px 0;
+  }
+  .brief-keys{font-size:.82rem; color:var(--dim); line-height:1.9; margin-bottom:16px}
+  .brief-keys b{color:var(--ink)}
+
+  table.std{border-collapse:collapse; width:100%; font-size:.86rem; margin:14px 0 6px}
+  table.std th,table.std td{border:1px solid var(--line-soft); padding:.55em .8em; text-align:left; line-height:1.5}
+  table.std th{color:var(--faint); font-size:.72rem; letter-spacing:.15em; font-weight:700; background:var(--panel2)}
+  table.std td:first-child{color:var(--accent); font-weight:700; white-space:nowrap}
+  table.std td{color:var(--dim)}
+  table.std td b{color:var(--ink)}
+
+  /* ---------- players / leaderboard ---------- */
+  .chipsrow{display:flex; flex-wrap:wrap; gap:8px; margin:10px 0}
+  .pchip{
+    cursor:pointer; border:1px solid var(--line); background:var(--panel2); color:var(--ink);
+    border-radius:999px; padding:.35em 1em; font-size:.85rem; display:inline-flex; gap:.6em; align-items:center;
+    font-family:var(--cjk);
+  }
+  .pchip .st{color:var(--yellow); font-size:.8em}
+  .pchip.cur{border-color:var(--hud); color:var(--hud)}
+  .pchip .del{color:var(--faint)}
+  .pchip.confirmdel{border-color:var(--warn); color:var(--warn)}
+  input.txt,textarea.txt{
+    width:100%; background:var(--panel2); border:1px solid var(--line); border-radius:10px;
+    color:var(--ink); font-family:var(--cjk); font-size:.95rem; padding:.55em .8em;
+  }
+  textarea.txt{font-family:var(--mono); font-size:.85rem; min-height:70px; resize:vertical}
+  input.txt:focus,textarea.txt:focus{outline:2px solid var(--hud-dim)}
+  .boardtabs{display:flex; gap:8px; margin:12px 0; flex-wrap:wrap; align-items:center}
+  .boardtabs .btn.on{border-color:var(--accent); color:var(--accent)}
+  select.sel{
+    background:var(--panel2); border:1px solid var(--line); color:var(--ink); border-radius:10px;
+    padding:.45em .7em; font-family:var(--cjk); font-size:.9rem; max-width:100%;
+  }
+  table.bd{border-collapse:collapse; width:100%; font-size:.88rem}
+  table.bd th,table.bd td{border-bottom:1px solid var(--line-soft); padding:.5em .7em; text-align:left; white-space:nowrap}
+  table.bd th{color:var(--faint); font-size:.7rem; letter-spacing:.15em; font-weight:700; position:sticky; top:0; background:var(--panel)}
+  table.bd td{color:var(--dim); font-variant-numeric:tabular-nums}
+  table.bd td.nm{color:var(--ink); font-weight:700}
+  table.bd td.st{color:var(--yellow); letter-spacing:.1em}
+  table.bd tr.top1 td:first-child{color:var(--yellow)}
+  .tblwrap{overflow-x:auto; max-height:38vh; overflow-y:auto; border:1px solid var(--line-soft); border-radius:10px}
+  .codebox{
+    display:flex; gap:8px; align-items:center; background:var(--panel2); border:1px dashed var(--hud-dim);
+    border-radius:10px; padding:.6em .9em; margin:12px 0 4px;
+  }
+  .codebox code{font-family:var(--mono); color:var(--hud); font-size:.9rem; word-break:break-all; flex:1}
+  .hintline{color:var(--faint); font-size:.76rem; line-height:1.7}
+  .okmsg{color:var(--hud); font-size:.82rem; min-height:1.4em}
+  .okmsg.bad{color:var(--warn)}
+
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important; animation:none !important}
+  }
+</style>
+
+<!-- ================= MENU ================= -->
+<div id="menu">
+  <div class="hero">
+    <div>
+      <div class="kicker">DRONE SOCCER TRAINING GROUND</div>
+      <h1>無人機足球<span class="accent">・</span>十大術科訓練場</h1>
+      <p class="lead">依照術科操縱指南打造的模擬飛行訓練。用真實 Mode 2 雙搖桿操作,從起飛懸停到守門斷電,一關一關考取你的飛行執照。</p>
+    </div>
+    <div class="hero-side">
+      <button class="btn ghost" id="btnPlayer">👤 學員:未登記</button>
+      <div class="totalstars"><small>累計星等</small><span id="totalStars">☆ 0 / 30</span></div>
+      <span class="tag hud" id="rankTag">見習飛手</span>
+    </div>
+  </div>
+
+  <div class="ctrl-strip">
+    <span><b>左搖桿</b>|<span class="kbd">W</span><span class="kbd">S</span> 油門升降・<span class="kbd">A</span><span class="kbd">D</span> 旋轉(Yaw)</span>
+    <span><b>右搖桿</b>|<span class="kbd">↑</span><span class="kbd">↓</span> 前後飛(Pitch)・<span class="kbd">←</span><span class="kbd">→</span> 左右側飛(Roll)</span>
+    <span><span class="kbd">X</span> 緊急斷電</span>
+    <span><span class="kbd">R</span> 重試本關</span>
+    <span style="color:var(--faint)">平板學員可直接拖曳畫面下方的虛擬搖桿</span>
+  </div>
+
+  <div class="stage s1">
+    <div class="stage-head">
+      <span class="no">STAGE 01</span><h2>第一階段:基礎控球與精準位移</h2><div class="rule"></div>
+    </div>
+    <div class="mgrid" id="grid1"></div>
+  </div>
+
+  <div class="stage s2">
+    <div class="stage-head">
+      <span class="no">STAGE 02</span><h2>第二階段:進階航路與足球專項技巧</h2><div class="rule"></div>
+    </div>
+    <div class="mgrid" id="grid2"></div>
+  </div>
+
+  <div class="menu-foot">
+    <button class="btn ghost" id="btnBoard">🏆 計分排行榜</button>
+    <button class="btn ghost" id="btnStd">📋 關鍵技術標準</button>
+    <button class="btn ghost" id="btnTeacher">教師模式:全部解鎖</button>
+    <div class="sp"></div>
+    <button class="btn ghost" id="btnReset" style="color:var(--faint)">清除進度</button>
+    <span class="credit">課程營隊教學用・依「無人機足球:10 大基礎術科操縱指南」設計</span>
+  </div>
+</div>
+
+<!-- ================= GAME ================= -->
+<div id="game">
+  <div class="topbar">
+    <button class="btn ghost" id="btnBack">← 選單</button>
+    <div>
+      <div class="mtitle" id="gTitle">—</div>
+      <div class="msub" id="gSub">—</div>
+    </div>
+    <div class="sp"></div>
+    <div class="readout"><small>TIME</small><span id="roTime">0.0</span></div>
+    <div class="readout" id="roFaultWrap"><small>FAULT</small><span id="roFault">0</span></div>
+  </div>
+
+  <div class="gwrap">
+    <div class="arena-wrap">
+      <canvas id="cv"></canvas>
+      <div class="warnflash" id="warnflash">警告</div>
+    </div>
+
+    <div class="side">
+      <div class="databar">
+        <div class="datum"><div class="lb">ALT 高度</div><div class="vl" id="dAlt">0.00m</div></div>
+        <div class="datum"><div class="lb">HDG 機頭</div><div class="vl" id="dHdg">前 000°</div></div>
+        <div class="datum"><div class="lb">SPD 速度</div><div class="vl" id="dSpd">0.0m/s</div></div>
+      </div>
+
+      <div class="panelbox">
+        <h3>任務目標</h3>
+        <div class="goal-main" id="gGoal">—</div>
+        <ul class="steps" id="gSteps"></ul>
+      </div>
+
+      <div class="panelbox">
+        <h3>教練提示</h3>
+        <div class="coach" id="gCoach">—</div>
+      </div>
+
+      <div class="panelbox">
+        <div class="sticksrow">
+          <div>
+            <div class="stick" id="stickL"><div class="axis"></div><div class="knob"></div></div>
+            <div class="sticklb"><b>左桿</b> 油門 / 旋轉<br>W S A D</div>
+          </div>
+          <div>
+            <div class="stick" id="stickR"><div class="axis"></div><div class="knob"></div></div>
+            <div class="sticklb"><b>右桿</b> 前後 / 側飛<br>↑ ↓ ← →</div>
+          </div>
+        </div>
+        <div class="actionrow">
+          <button class="btn cut" id="btnCut">⏻ 斷電 (X)</button>
+          <button class="btn" id="btnRetry">↺ 重試 (R)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= BRIEF ================= -->
+<div class="ovl" id="ovlBrief">
+  <div class="card">
+    <span class="tag acc" id="bTag">任務 01</span>
+    <h2 id="bTitle" style="margin-top:10px">—</h2>
+    <div class="sub" id="bSkill">—</div>
+    <div class="brief-goal" id="bGoal">—</div>
+    <div class="brief-keys" id="bKeys">—</div>
+    <div class="btnrow">
+      <button class="btn primary" id="btnStart">🚁 開始任務</button>
+      <button class="btn ghost" id="btnBriefBack">回選單</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= RESULT ================= -->
+<div class="ovl" id="ovlDone">
+  <div class="card">
+    <span class="tag hud" id="rTag">任務完成</span>
+    <h2 id="rTitle" style="margin-top:10px">—</h2>
+    <div class="bigstars" id="rStars">★★★</div>
+    <div class="result-line" id="rTime">TIME 00.0s</div>
+    <div class="result-line" id="rFault">FAULT 0</div>
+    <div class="codebox"><code id="rCode">—</code><button class="btn" id="btnCopyCode" style="flex:none">複製</button></div>
+    <div class="hintline">成績代碼:抄給教練,或貼進「🏆 計分排行榜」即可登錄。</div>
+    <div class="verdict" id="rVerdict">—</div>
+    <div class="btnrow">
+      <button class="btn primary" id="btnNext">下一關 →</button>
+      <button class="btn" id="btnAgain">↺ 再飛一次</button>
+      <button class="btn ghost" id="btnDoneBack">回選單</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= STANDARDS ================= -->
+<div class="ovl" id="ovlStd">
+  <div class="card" style="max-width:560px">
+    <span class="tag acc">供教學參考</span>
+    <h2 style="margin-top:10px">關鍵技術標準</h2>
+    <table class="std">
+      <tr><th>項目</th><th>標準</th><th>要求</th></tr>
+      <tr><td>定點懸停</td><td>維持在半徑 <b>50cm</b> 範圍內</td><td>持續 <b>10 秒</b></td></tr>
+      <tr><td>四方位旋轉</td><td>每次旋轉 <b>90°</b>(右、後、左、前)</td><td>每個方位停 <b>3 秒</b></td></tr>
+      <tr><td>穩定性標準</td><td>高度誤差 <b>&lt; 20cm</b></td><td>不可產生大幅起伏</td></tr>
+      <tr><td>守門練習</td><td><b>0.5m</b> 與 <b>2m</b> 之間來回升降</td><td>重複 <b>3 次</b></td></tr>
+      <tr><td>緊急斷電</td><td>落地後 <b>1 秒內</b>完成斷電</td><td>—</td></tr>
+    </table>
+    <div class="btnrow" style="margin-top:14px">
+      <button class="btn" id="btnStdClose">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= PLAYER ================= -->
+<div class="ovl" id="ovlPlayer">
+  <div class="card">
+    <span class="tag hud">學員登記</span>
+    <h2 style="margin-top:10px">你是誰?</h2>
+    <div class="sub">成績會以名字記錄在這台裝置上,過關時也會產生「成績代碼」讓教練登錄到排行榜。</div>
+    <input class="txt" id="plName" maxlength="10" placeholder="輸入名字後按「登記」">
+    <div class="chipsrow" id="plList"></div>
+    <div class="btnrow" style="margin-top:8px">
+      <button class="btn primary" id="btnPlOk">登記 / 切換</button>
+      <button class="btn ghost" id="btnPlClose">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= LEADERBOARD ================= -->
+<div class="ovl" id="ovlBoard">
+  <div class="card" style="max-width:760px">
+    <span class="tag acc">🏆 教練台</span>
+    <h2 style="margin-top:10px">計分排行榜</h2>
+    <div class="boardtabs">
+      <button class="btn on" id="tabTotal">總排名</button>
+      <button class="btn" id="tabMission">各關成績</button>
+      <select class="sel" id="bdMission" style="display:none"></select>
+    </div>
+    <div class="tblwrap"><table class="bd" id="bdTable"></table></div>
+    <h3 style="margin:16px 0 6px; font-size:.78rem; letter-spacing:.2em; color:var(--faint); font-weight:700">登錄成績代碼(一行一筆,可貼多筆)</h3>
+    <textarea class="txt" id="codeIn" placeholder="例:小明-7-3-24.5-2-0A3"></textarea>
+    <div class="okmsg" id="codeMsg"></div>
+    <div class="btnrow" style="margin-top:4px">
+      <button class="btn" id="btnAddCode">➕ 登錄代碼</button>
+      <button class="btn" id="btnCsv">⬇ 匯出 CSV</button>
+      <button class="btn" id="btnJson">⬇ 匯出備份</button>
+      <button class="btn" id="btnImp">⬆ 匯入備份</button>
+      <input type="file" id="impFile" accept=".json,application/json" style="display:none">
+      <button class="btn" id="btnClearBoard" style="color:var(--faint)">清空成績</button>
+      <button class="btn ghost" id="btnBoardClose">關閉</button>
+    </div>
+    <div class="hintline" style="margin-top:8px">成績保存在這台裝置的瀏覽器中。營隊多台裝置彙整:各台按「匯出備份」,把檔案傳到教練機按「匯入備份」合併;或讓學員把成績代碼抄給教練登錄。匯出 CSV 可直接用 Excel 開啟。</div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* =========================================================
+   無人機足球・十大術科訓練場
+   ========================================================= */
+const $ = id => document.getElementById(id);
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const TAU = Math.PI*2;
+const fmt1 = v=>v.toFixed(1), fmt2 = v=>v.toFixed(2);
+
+/* ---------- persistent progress (per-player) ---------- */
+const SAVE_KEY='droneSoccerCampV2';
+let save = {players:{}, current:'', teacher:false};
+try{
+  const s=localStorage.getItem(SAVE_KEY);
+  if(s){ save=Object.assign(save,JSON.parse(s)); }
+  else{
+    const old=localStorage.getItem('droneSoccerCampV1');   // 舊版(單人)進度搬移
+    if(old){
+      const o=JSON.parse(old);
+      save.teacher=!!o.teacher;
+      if(o.stars && Object.keys(o.stars).length){
+        save.players['學員1']={stars:o.stars, results:{}};
+        save.current='學員1';
+      }
+    }
+  }
+}catch(e){}
+if(!save.players) save.players={};
+function persist(){ try{localStorage.setItem(SAVE_KEY,JSON.stringify(save));}catch(e){} }
+function P(){ return (save.current&&save.players[save.current])||null; }
+function ensurePlayer(){
+  if(P()) return P();
+  save.players['訪客']=save.players['訪客']||{stars:{},results:{}};
+  save.current='訪客';
+  return P();
+}
+
+/* ---------- drone state ---------- */
+const drone = {x:0,y:0,z:0,vx:0,vy:0,vz:0,hdg:0,motors:true,rot:0};
+const stick = {thr:0,yaw:0,pitch:0,roll:0};
+const keys = {};
+
+const world = {half:2.7};       // arena ±2.7 m
+let scene='menu';               // menu | brief | play | done
+let mi=0, M=null;               // current mission index/object
+let t=0, started=false, faults=0;
+let warnUntil=0, warnAcc=0;
+let windPhase=Math.random()*10;
+let touchdown={t:-9,vz:0,justLanded:false};
+let cutAt=-9;
+
+/* =========================================================
+   MISSIONS — 規格取自指南
+   ========================================================= */
+function ring(x,y,r,color,label){ return {x,y,r,color,label}; }
+
+const missions=[
+/* ---- STAGE 1 ---- */
+{
+  id:1, stage:1, name:'起飛與定點懸停', skill:'起飛、懸停與四方位旋轉(上)',
+  goal:'起飛至 1.0–1.6m 高度,停在中央圓圈(半徑 50cm)內,連續懸停 10 秒。飄出圈外或高度跑掉,計時歸零重來。',
+  keys:'只用<b>左桿油門(W/S)</b>控制高度,<b>右桿</b>微調位置。桿量要小、要柔。',
+  coach:'<b>穩住呼吸。</b>懸停是所有術科的地基——油門不是開關,是「呼吸」。看到飄移,提早半秒給一點點反向桿,而不是等飄出去才大桿救。標準:半徑 50cm 內持續 10 秒。',
+  par:26, wind:0.22,
+  steps:['起飛,爬升到 1.0–1.6m','進入中央圓圈','連續懸停 10 秒'],
+  st:{hold:0},
+  setup(){ this.st={hold:0}; },
+  update(dt){
+    const s=this.st, inBand=drone.z>=1.0&&drone.z<=1.6, inCir=Math.hypot(drone.x,drone.y)<=0.5;
+    setStep(0, drone.z>=1.0);
+    setStep(1, inBand&&inCir);
+    if(drone.z>0.2&&inBand&&inCir){ s.hold+=dt; }
+    else if(s.hold>0&&drone.z>0.2){ if(s.hold>1) flashWarn('跳出範圍,計時歸零!'); s.hold=0; }
+    setStep(2, s.hold>=10);
+    liveGoal(`連續懸停 <b style="color:var(--hud)">${fmt1(Math.min(10,s.hold))}</b> / 10.0 秒`);
+    if(s.hold>=10) return true;
+  },
+  draw(g){
+    padAt(g,0,0);
+    zoneRing(g,0,0,0.5, this.st.hold>0?'rgba(79,227,163,.9)':'rgba(79,227,163,.45)');
+    if(this.st.hold>0) arcProgress(g,0,0,0.62,this.st.hold/10,'#4fe3a3');
+    altBandMark(g,1.0,1.6);
+  }
+},
+{
+  id:2, stage:1, name:'四方位旋轉', skill:'起飛、懸停與四方位旋轉(下)',
+  goal:'在中央圓圈內懸停,依序把機頭轉向 右(90°)→ 後(180°)→ 左(270°)→ 前(0°),每個方位穩定停留 3 秒。',
+  keys:'<b>左桿 A/D</b> 控制旋轉。轉到位就鬆桿,盯著機頭橘色箭頭對準指南針目標。',
+  coach:'<b>每 90° 精準停頓。</b>旋轉時多數新手會同時掉高度——記得 Yaw 打桿時,油門要跟著補一點。轉過頭比轉不到更常見:提早收桿,讓機頭「滑」進目標角度。',
+  par:36, wind:0.2,
+  steps:['懸停於中央圓圈','機頭向右 90°,停 3 秒','機頭向後 180°,停 3 秒','機頭向左 270°,停 3 秒','機頭回正 0°,停 3 秒'],
+  st:{i:0,hold:0},
+  setup(){ this.st={i:0,hold:0}; },
+  update(dt){
+    const s=this.st, targets=[90,180,270,0];
+    const inCir=Math.hypot(drone.x,drone.y)<=0.5 && drone.z>0.5;
+    setStep(0,inCir);
+    if(s.i<4){
+      const tgt=targets[s.i];
+      let d=Math.abs(((drone.hdg*180/Math.PI - tgt)%360+540)%360-180);
+      if(inCir && d<=12){ s.hold+=dt; } else s.hold=0;
+      if(s.hold>=3){ setStep(1+s.i,true); s.i++; s.hold=0; ping(); }
+      liveGoal(`目標機頭:<b style="color:var(--accent)">${['右 90°','後 180°','左 270°','前 0°'][Math.min(s.i,3)]}</b>・穩定 ${fmt1(Math.min(3,s.hold))} / 3.0 秒`);
+    }
+    if(s.i>=4) return true;
+  },
+  draw(g){
+    padAt(g,0,0);
+    zoneRing(g,0,0,0.5,'rgba(79,227,163,.5)');
+    const targets=[90,180,270,0], s=this.st;
+    if(s.i<4){
+      const a=targets[s.i]*Math.PI/180;
+      headingRay(g,a,'#ff8a3c');
+      if(s.hold>0) arcProgress(g,0,0,0.62,s.hold/3,'#ff8a3c');
+    }
+    altBandMark(g,0.6,2.2);
+  }
+},
+{
+  id:3, stage:1, name:'前後飛行控制', skill:'前後與左右側飛控制',
+  goal:'保持機頭朝前,沿走廊「前推 → 後拉」:飛進北環停 2 秒,再倒退回南環停 2 秒。偏出走廊(左右 ±35cm)會記失誤。',
+  keys:'只用<b>右桿 ↑/↓</b>。倒退時不要轉頭!練的就是非機頭指向的移動。',
+  coach:'<b>航跡不偏移。</b>前後飛看似簡單,難在「回程」——倒退時視覺是反的,新手容易愈修愈歪。訣竅:眼睛盯航線不盯機身,桿量給小,讓機體自己滑。',
+  par:30, wind:0.24,
+  steps:['起飛,進入走廊','前推至北環,停 2 秒','後拉回南環,停 2 秒'],
+  st:{i:0,hold:0},
+  setup(){ this.st={i:0,hold:0}; drone.y=-1.8; },
+  update(dt){
+    const s=this.st;
+    setStep(0, drone.z>0.5);
+    corridorCheck(dt, Math.abs(drone.x)>0.35 && drone.z>0.4, '偏出走廊!');
+    const rings=[{x:0,y:1.8},{x:0,y:-1.8}];
+    if(s.i<2){
+      const r=rings[s.i];
+      if(drone.z>0.4 && Math.hypot(drone.x-r.x,drone.y-r.y)<=0.35) s.hold+=dt; else s.hold=0;
+      if(s.hold>=2){ setStep(1+s.i,true); s.i++; s.hold=0; ping(); }
+      liveGoal(`${s.i===0?'前推至北環':'後拉回南環'}・停留 ${fmt1(Math.min(2,s.hold))} / 2.0 秒`);
+    }
+    if(s.i>=2) return true;
+  },
+  draw(g){
+    corridorDraw(g,'v',0.35);
+    padAt(g,0,-1.8);
+    zoneRing(g,0,1.8,0.35, this.st.i===0?'#ff8a3c':'rgba(79,227,163,.9)');
+    zoneRing(g,0,-1.8,0.35, this.st.i===1?'#ff8a3c':'rgba(79,227,163,.5)');
+  }
+},
+{
+  id:4, stage:1, name:'左右側飛控制', skill:'前後與左右側飛控制',
+  goal:'機頭保持朝前(偏轉超過 ±15° 記失誤),用側飛「右移 → 左移」:飛進東環停 2 秒,再側飛回西環停 2 秒。',
+  keys:'只用<b>右桿 ←/→</b> 側飛,<b>不要碰 A/D</b>。機頭永遠朝前才算數。',
+  coach:'<b>克服非機頭指向的移動。</b>側飛是無人機足球的看家本領——比賽裡你沒空轉機頭。身體會想「轉過去再飛」,忍住;讓左右手分工,眼睛守住機頭箭頭。',
+  par:30, wind:0.24,
+  steps:['起飛,機頭保持朝前','右側飛至東環,停 2 秒','左側飛回西環,停 2 秒'],
+  st:{i:0,hold:0},
+  setup(){ this.st={i:0,hold:0}; drone.x=-1.8; },
+  update(dt){
+    const s=this.st;
+    setStep(0, drone.z>0.5);
+    let hd=Math.abs(((drone.hdg*180/Math.PI)%360+540)%360-180); hd=180-hd; // deviation from 0
+    corridorCheck(dt, hd>15 && drone.z>0.4, '機頭偏了!保持朝前');
+    const rings=[{x:1.8,y:0},{x:-1.8,y:0}];
+    if(s.i<2){
+      const r=rings[s.i];
+      if(drone.z>0.4 && Math.hypot(drone.x-r.x,drone.y-r.y)<=0.35 && hd<=15) s.hold+=dt; else s.hold=0;
+      if(s.hold>=2){ setStep(1+s.i,true); s.i++; s.hold=0; ping(); }
+      liveGoal(`${s.i===0?'右側飛至東環':'左側飛回西環'}・停留 ${fmt1(Math.min(2,s.hold))} / 2.0 秒・機頭偏差 ${hd.toFixed(0)}°`);
+    }
+    if(s.i>=2) return true;
+  },
+  draw(g){
+    corridorDraw(g,'h',0.35);
+    padAt(g,-1.8,0);
+    zoneRing(g,1.8,0,0.35, this.st.i===0?'#ff8a3c':'rgba(79,227,163,.9)');
+    zoneRing(g,-1.8,0,0.35, this.st.i===1?'#ff8a3c':'rgba(79,227,163,.5)');
+    headingRay(g,0,'rgba(79,168,255,.7)');
+  }
+},
+{
+  id:5, stage:1, name:'定高巡航', skill:'穩定性標準:高度誤差 < 20cm',
+  goal:'把高度鎖在 1.2m(±20cm),沿走廊完成北環→南環一趟來回。高度跑出綠色帶超過 1 秒記一次失誤。',
+  keys:'眼睛一半看場地、一半看右側<b>高度尺</b>。油門微調,不可大幅起伏。',
+  coach:'<b>保持高度穩定,不可產生大幅起伏。</b>移動時機體會自然掉高——前推的同時油門加一絲。這一關練的是「雙桿同時、各自獨立」,是第二階段所有航路的門票。',
+  par:32, wind:0.26,
+  steps:['爬升進入 1.2m ±20cm 高度帶','鎖定高度前往北環','鎖定高度返回南環'],
+  st:{i:0,out:0},
+  setup(){ this.st={i:0,out:0}; drone.y=-1.8; },
+  update(dt){
+    const s=this.st, inBand=drone.z>=1.0&&drone.z<=1.4;
+    setStep(0, inBand);
+    if(drone.z>0.5 && started){
+      if(!inBand){ s.out+=dt; if(s.out>=1){ addFault('高度誤差超過 20cm!'); s.out=0; } }
+      else s.out=0;
+    }
+    const rings=[{x:0,y:1.8},{x:0,y:-1.8}];
+    if(s.i<2){
+      const r=rings[s.i];
+      if(Math.hypot(drone.x-r.x,drone.y-r.y)<=0.35 && inBand){ setStep(1+s.i,true); s.i++; ping(); }
+      liveGoal(`高度 <b style="color:${inBand?'var(--hud)':'var(--warn)'}">${fmt2(drone.z)}m</b>(目標 1.00–1.40m)・${s.i===0?'前往北環':'返回南環'}`);
+    }
+    if(s.i>=2) return true;
+  },
+  draw(g){
+    corridorDraw(g,'v',0.45);
+    padAt(g,0,-1.8);
+    zoneRing(g,0,1.8,0.35, this.st.i===0?'#ff8a3c':'rgba(79,227,163,.9)');
+    zoneRing(g,0,-1.8,0.35, this.st.i===1?'#ff8a3c':'rgba(79,227,163,.5)');
+    altBandMark(g,1.0,1.4);
+  }
+},
+/* ---- STAGE 2 ---- */
+{
+  id:6, stage:2, name:'2×2m 正方形航路', skill:'正方形航路',
+  goal:'依序通過四個角點環(西南→西北→東北→東南→回西南),沿正方形邊線飛行,偏離邊線太遠會記失誤。',
+  keys:'每個角先<b>減速、停穩、再轉向</b>。側飛派得上用場——四個邊可以不轉機頭飛完。',
+  coach:'<b>角點要「方」。</b>正方形航路考的是節奏:直線給桿、進角收桿。飛圓角代表你桿收太晚。進階挑戰:全程機頭朝前,只用 pitch/roll 完成——這才是足球場上的走位。',
+  par:42, wind:0.28,
+  steps:['起飛,前往西南角','① 西北角','② 東北角','③ 東南角','④ 回到西南角'],
+  st:{i:0},
+  setup(){ this.st={i:0}; drone.x=-1; drone.y=-1; },
+  update(dt){
+    const s=this.st, pts=[[-1,1],[1,1],[1,-1],[-1,-1]];
+    setStep(0, drone.z>0.5);
+    // corridor: nearest point on square edges
+    if(drone.z>0.4){
+      const dEdge=distToSquare(drone.x,drone.y,1);
+      corridorCheck(dt, dEdge>0.4, '偏離航路!');
+    }
+    if(s.i<4){
+      const p=pts[s.i];
+      if(drone.z>0.4 && Math.hypot(drone.x-p[0],drone.y-p[1])<=0.35){ setStep(1+s.i,true); s.i++; ping(); }
+      liveGoal(`下一角點:<b style="color:var(--accent)">${['西北 ↖','東北 ↗','東南 ↘','西南 ↙'][Math.min(s.i,3)]}</b>(${s.i} / 4)`);
+    }
+    if(s.i>=4) return true;
+  },
+  draw(g){
+    g.save(); g.strokeStyle='rgba(255,138,60,.4)'; g.lineWidth=lw(3); g.setLineDash([lw(10),lw(8)]);
+    g.strokeRect(px(-1),py(1),sc(2),sc(2)); g.restore();
+    const pts=[[-1,1],[1,1],[1,-1],[-1,-1]], s=this.st;
+    padAt(g,-1,-1);
+    for(let k=0;k<4;k++){
+      const done=k<s.i, cur=k===s.i;
+      zoneRing(g,pts[k][0],pts[k][1],0.32, done?'rgba(79,227,163,.9)':cur?'#ff8a3c':'rgba(140,163,184,.35)');
+      wText(g,pts[k][0],pts[k][1]+0.5,String(k+1), cur?'#ff8a3c':'#5c7186');
+    }
+  }
+},
+{
+  id:7, stage:2, name:'模擬進球急停', skill:'反向撥桿急停',
+  goal:'從南端全速衝刺,以 ≥2.0 m/s 的速度衝過球門線,然後用反向撥桿在煞車區(線後 70cm)內完全停住。衝太慢或衝出界都要重跑。',
+  keys:'衝刺:<b>↑ 推到底</b>。過線瞬間<b>↓ 反打到底</b>再回中。這就是「反向撥桿急停」。',
+  coach:'<b>射門靠衝刺,得分靠急停。</b>真正的比賽裡,穿過球門後撞牆=犯規。反向桿的時機是體感:過線「前」一點點就要開始反打,因為機體有慣性。停得愈短,你就愈接近選手。',
+  par:22, wind:0.2,
+  steps:['起飛,回到南端起跑區','全速衝刺,過線速度 ≥ 2.0 m/s','在煞車區內完全停住'],
+  st:{phase:0,crossSpd:0},
+  setup(){ this.st={phase:0,crossSpd:0}; drone.y=-2.1; },
+  update(dt){
+    const s=this.st, LINE=1.3, ZONE=0.7;
+    const spd=Math.hypot(drone.vx,drone.vy);
+    setStep(0, drone.z>0.5);
+    if(s.phase===0){
+      if(drone.z>0.4 && drone.y>=LINE){
+        if(spd>=2.0){ s.phase=1; s.crossSpd=spd; setStep(1,true); ping(); }
+        else{ addFault(`過線太慢 ${fmt1(spd)} m/s(需 ≥2.0)`); resetRun(); }
+      }
+      liveGoal(`衝刺速度 <b style="color:${spd>=2.0?'var(--hud)':'var(--accent)'}">${fmt1(spd)}</b> m/s(過線需 ≥ 2.0)`);
+    } else if(s.phase===1){
+      if(drone.y>LINE+ZONE){ addFault('衝出煞車區!'); s.phase=0; resetRun(); setStep(1,false); }
+      else if(spd<=0.15){ setStep(2,true); return true; }
+      liveGoal(`反向撥桿!剩餘 <b style="color:var(--warn)">${Math.max(0,(LINE+ZONE-drone.y)*100).toFixed(0)}cm</b>・速度 ${fmt1(spd)} m/s`);
+    }
+    function resetRun(){ drone.x=0; drone.y=-2.1; drone.vx=drone.vy=0; }
+  },
+  draw(g){
+    const LINE=1.3, ZONE=0.7;
+    // runway
+    g.save(); g.strokeStyle='rgba(79,168,255,.25)'; g.lineWidth=lw(2);
+    g.strokeRect(px(-0.6),py(LINE),sc(1.2),sc(LINE+2.4)); g.restore();
+    // goal
+    g.save();
+    g.fillStyle='rgba(255,92,92,.12)';
+    g.fillRect(px(-0.6),py(LINE+ZONE),sc(1.2),sc(ZONE));
+    g.strokeStyle='#ff8a3c'; g.lineWidth=lw(4);
+    g.beginPath(); g.moveTo(px(-0.6),py(LINE)); g.lineTo(px(0.6),py(LINE)); g.stroke();
+    g.strokeStyle='rgba(255,92,92,.8)'; g.lineWidth=lw(3); g.setLineDash([lw(6),lw(6)]);
+    g.beginPath(); g.moveTo(px(-0.6),py(LINE+ZONE)); g.lineTo(px(0.6),py(LINE+ZONE)); g.stroke();
+    g.restore();
+    wText(g,0,LINE+0.18,'球門線','#ff8a3c');
+    wText(g,0,LINE+ZONE+0.18,'煞車底線','#ff5c5c');
+    padAt(g,0,-2.1);
+    // goal posts
+    goalPosts(g,LINE+ZONE+0.15);
+  }
+},
+{
+  id:8, stage:2, name:'「8」字協調飛行', skill:'同時協調使用旋轉(Yaw)與側飛(Roll)',
+  goal:'繞兩支標桿飛出一個 8 字:依序通過 8 個檢查點。試著同時協調 Yaw 與 Roll,讓航跡圓滑。',
+  keys:'左手<b>持續給一點 Yaw</b>、右手<b>同步給 Roll + Pitch</b>,雙桿一起動,轉彎才會滑順。',
+  coach:'<b>雙桿協調是分水嶺。</b>能把 8 字飛圓,代表左右手已經「解耦」——這是繞樁、過人、盤球的共同底層。飛歪了別急著修,先把速度放慢,協調感比速度重要。',
+  par:48, wind:0.26,
+  steps:['起飛,通過檢查點 1','完成右圈(點 1–4)','穿越中心交叉','完成左圈(點 5–8)'],
+  st:{i:0},
+  setup(){ this.st={i:0}; drone.y=0; drone.x=0; },
+  update(dt){
+    const s=this.st, pts=this.pts;
+    if(s.i<pts.length){
+      const p=pts[s.i];
+      if(drone.z>0.4 && Math.hypot(drone.x-p[0],drone.y-p[1])<=0.32){ s.i++; ping(); }
+      liveGoal(`檢查點 <b style="color:var(--purple)">${s.i} / ${pts.length}</b>`);
+    }
+    setStep(0,s.i>=1); setStep(1,s.i>=4); setStep(2,s.i>=5); setStep(3,s.i>=8);
+    if(s.i>=pts.length) return true;
+  },
+  pts:[[0.9,0.75],[1.7,0],[0.9,-0.75],[0,0],[-0.9,0.75],[-1.7,0],[-0.9,-0.75],[0,0]],
+  draw(g){
+    // figure-8 guide
+    g.save(); g.strokeStyle='rgba(167,139,250,.4)'; g.lineWidth=lw(3); g.setLineDash([lw(9),lw(8)]);
+    g.beginPath(); g.ellipse(px(0.9),py(0),sc(0.85),sc(0.8),0,0,TAU); g.stroke();
+    g.beginPath(); g.ellipse(px(-0.9),py(0),sc(0.85),sc(0.8),0,0,TAU); g.stroke();
+    g.restore();
+    // pylons
+    pylon(g,0.9,0); pylon(g,-0.9,0);
+    const s=this.st;
+    this.pts.forEach((p,k)=>{
+      if(k<s.i) return;
+      zoneRing(g,p[0],p[1],0.28, k===s.i?'#a78bfa':'rgba(140,163,184,.3)');
+      wText(g,p[0],p[1],String(k+1), k===s.i?'#a78bfa':'#5c7186');
+    });
+    padAt(g,0,0,0.001);
+  }
+},
+{
+  id:9, stage:2, name:'五點精準降落', skill:'瞄準降落在指定色塊降落墊',
+  goal:'依照指定顏色順序,輕降在 5 個色塊降落墊上(觸地即算,重落地記失誤),每次降落後重新起飛前往下一塊。',
+  keys:'降落前先在墊子正上方<b>懸停對準</b>,再慢慢收油門。下降太快 = 重落地失誤。',
+  coach:'<b>降落是可以練的射門。</b>五點降落練的是「看點、對點、收油門」三拍節奏。比賽計時賽就是這樣輪換電池的——降得準,換電快,上場時間就是你的。',
+  par:65, wind:0.24,
+  steps:['🟦 藍色墊','🟥 紅色墊','🟧 橙色墊','🟩 綠色墊','🟪 紫色墊'],
+  st:{i:0,air:true},
+  pads:[[-1.7,1.5,'#4fa8ff','藍'],[1.7,1.5,'#ff5c5c','紅'],[1.7,-1.5,'#ff8a3c','橙'],[-1.7,-1.5,'#39d98a','綠'],[0,0,'#a78bfa','紫']],
+  setup(){ this.st={i:0,air:false}; drone.x=0; drone.y=-2.2; },
+  update(dt){
+    const s=this.st;
+    if(drone.z>0.5) s.air=true;
+    if(s.i<5 && touchdown.justLanded && s.air){
+      const p=this.pads[s.i];
+      if(Math.hypot(drone.x-p[0],drone.y-p[1])<=0.34){
+        setStep(s.i,true); s.i++; s.air=false; ping();
+      } else {
+        addFault('降錯位置!重新起飛對準');
+      }
+    }
+    if(s.i<5){
+      const p=this.pads[s.i];
+      liveGoal(`目標:<b style="color:${p[2]}">${p[3]}色降落墊</b>(${s.i} / 5)・${s.air?'對準後緩慢下降':'重新起飛'}`);
+    }
+    if(s.i>=5 && drone.z<0.05) return true;
+  },
+  draw(g){
+    const s=this.st;
+    this.pads.forEach((p,k)=>{
+      const done=k<s.i, cur=k===s.i;
+      g.save();
+      g.fillStyle=done?'rgba(79,227,163,.15)':p[2]+(cur?'55':'26');
+      g.strokeStyle=done?'rgba(79,227,163,.8)':p[2];
+      g.lineWidth=lw(cur?4:2);
+      const r=sc(0.34);
+      g.fillRect(px(p[0])-r,py(p[1])-r,r*2,r*2);
+      g.strokeRect(px(p[0])-r,py(p[1])-r,r*2,r*2);
+      g.restore();
+      if(done) wText(g,p[0],p[1],'✓','#4fe3a3');
+      else wText(g,p[0],p[1]-0.55,p[3], cur?p[2]:'#5c7186');
+    });
+    padAt(g,0,-2.2);
+  }
+},
+{
+  id:10, stage:2, name:'守門員移動與緊急斷電', skill:'快速垂直升降 ×3 + 落地 1 秒內斷電',
+  goal:'守在球門前的守備區內,在 0.5m 與 2m 之間快速來回升降 3 次,然後降落,並在觸地後 1 秒內按下「斷電」。',
+  keys:'升降全靠<b>左桿 W/S</b>,水平位置守住守備區。落地瞬間立刻按 <b>X 斷電</b>!',
+  coach:'<b>守門員的兩個本能。</b>垂直升降是封堵射門的走位;緊急斷電是安全的最後一道線——比賽裡失控 1 秒就是事故。把「落地→斷電」練成反射動作,教練才敢放你上場。',
+  par:42, wind:0.26,
+  steps:['進入守備區,升至 2m ↑','降至 0.5m ↓(第 1 次)','完成第 2 次來回','完成第 3 次來回','降落,1 秒內完成斷電 ⏻'],
+  st:{reps:0,dir:1,armed:false},
+  setup(){ this.st={reps:0,dir:1,armed:false}; drone.y=1.6; },
+  update(dt){
+    const s=this.st;
+    const inBox=Math.hypot(drone.x,drone.y-1.6)<=0.6;
+    if(drone.z>0.3) corridorCheck(dt,!inBox,'離開守備區!');
+    if(s.reps<3 && inBox){
+      if(s.dir===1 && drone.z>=1.9){ s.dir=-1; if(s.reps===0) setStep(0,true); ping(); }
+      else if(s.dir===-1 && drone.z<=0.6 && drone.z>0.1){ s.dir=1; s.reps++; setStep(s.reps,true); ping(); }
+    }
+    if(s.reps>=3){
+      s.armed=true;
+      if(touchdown.justLanded){ /* wait for cut */ }
+      if(drone.z<0.02 && !drone.motors){
+        const dtc=cutAt-touchdown.t;
+        if(dtc>=0 && dtc<=1){ setStep(4,true); return true; }
+      }
+      if(drone.z<0.02 && drone.motors && t-touchdown.t>1 && touchdown.t>0){
+        addFault('斷電太慢(>1 秒)!重新起飛再降');
+        touchdown.t=-9;
+      }
+      liveGoal(`✅ 升降完成!<b style="color:var(--warn)">降落後 1 秒內按 X 斷電</b>`);
+    } else {
+      liveGoal(`升降 <b style="color:var(--hud)">${s.reps} / 3</b>・現在${s.dir===1?'升至 2.0m ↑':'降至 0.5m ↓'}・高度 ${fmt2(drone.z)}m`);
+    }
+  },
+  draw(g){
+    // goal + box
+    goalPosts(g,2.45);
+    g.save(); g.strokeStyle='rgba(79,168,255,.5)'; g.lineWidth=lw(2); g.setLineDash([lw(6),lw(6)]);
+    g.beginPath(); g.arc(px(0),py(1.6),sc(0.6),0,TAU); g.stroke(); g.restore();
+    wText(g,0,0.75,'守備區','#4fa8ff');
+    padAt(g,0,1.6,0.001);
+    altBandMark(g,0.5,2.0,true);
+  }
+}
+];
+
+/* =========================================================
+   HELPERS shared by missions
+   ========================================================= */
+function liveGoal(html){ $('gGoal').innerHTML=html; }
+function setStep(i,done){
+  const li=$('gSteps').children[i]; if(!li) return;
+  if(done){ li.classList.add('done'); li.classList.remove('cur'); }
+}
+function refreshCurrentStep(){
+  const lis=[...$('gSteps').children];
+  lis.forEach(li=>li.classList.remove('cur'));
+  const first=lis.find(li=>!li.classList.contains('done'));
+  if(first) first.classList.add('cur');
+}
+function flashWarn(msg){
+  $('warnflash').textContent=msg; $('warnflash').classList.add('on');
+  warnUntil=t+1.4;
+}
+function addFault(msg){
+  faults++; $('roFault').textContent=faults;
+  $('roFaultWrap').classList.add('warnc');
+  flashWarn(msg);
+}
+function corridorCheck(dt,violating,msg){
+  if(violating){ warnAcc+=dt; if(warnAcc>=1){ addFault(msg); warnAcc=0; } else if(warnAcc>0.15) flashWarn(msg); }
+  else warnAcc=Math.max(0,warnAcc-dt*2);
+}
+/* tiny audio ping */
+let AC=null;
+function ping(freq){
+  try{
+    AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    const o=AC.createOscillator(), gn=AC.createGain();
+    o.frequency.value=freq||880; o.type='sine';
+    gn.gain.setValueAtTime(0.12,AC.currentTime);
+    gn.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+0.25);
+    o.connect(gn).connect(AC.destination); o.start(); o.stop(AC.currentTime+0.26);
+  }catch(e){}
+}
+
+/* =========================================================
+   CANVAS / RENDER
+   ========================================================= */
+const cv=$('cv'), ctx=cv.getContext('2d');
+let CW=600, SC=CW/(world.half*2+0.4);
+function resize(){
+  const r=cv.parentElement.getBoundingClientRect();
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=Math.round(r.width*dpr); cv.height=Math.round(r.height*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  CW=r.width; SC=CW/(world.half*2+0.4);
+}
+window.addEventListener('resize',resize);
+const px=x=>CW/2+x*SC, py=y=>CW/2-y*SC, sc=v=>v*SC, lw=v=>v*CW/600;
+
+function drawArena(){
+  ctx.clearRect(0,0,CW,CW);
+  // turf
+  const grd=ctx.createRadialGradient(CW/2,CW/2,CW*0.1,CW/2,CW/2,CW*0.75);
+  grd.addColorStop(0,'#101a28'); grd.addColorStop(1,'#0b111b');
+  ctx.fillStyle=grd; ctx.fillRect(0,0,CW,CW);
+  // grid 0.5m
+  ctx.strokeStyle='rgba(34,49,72,.5)'; ctx.lineWidth=1;
+  for(let v=-2.5;v<=2.5;v+=0.5){
+    ctx.beginPath(); ctx.moveTo(px(v),py(-world.half)); ctx.lineTo(px(v),py(world.half)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px(-world.half),py(v)); ctx.lineTo(px(world.half),py(v)); ctx.stroke();
+  }
+  // boundary + center like a pitch
+  ctx.strokeStyle='rgba(233,241,247,.35)'; ctx.lineWidth=lw(2.5);
+  ctx.strokeRect(px(-world.half),py(world.half),sc(world.half*2),sc(world.half*2));
+  ctx.beginPath(); ctx.moveTo(px(-world.half),py(0)); ctx.lineTo(px(world.half),py(0));
+  ctx.strokeStyle='rgba(233,241,247,.14)'; ctx.stroke();
+  ctx.beginPath(); ctx.arc(px(0),py(0),sc(0.9),0,TAU); ctx.stroke();
+  // scale note
+  ctx.fillStyle='#3c4f68'; ctx.font=`${lw(11)}px ${'Consolas,monospace'}`;
+  ctx.fillText('1 格 = 0.5 m',lw(10),CW-lw(10));
+}
+function padAt(g,x,y,alpha){
+  g.save(); g.globalAlpha=alpha===undefined?1:alpha;
+  g.strokeStyle='rgba(140,163,184,.5)'; g.lineWidth=lw(2);
+  const r=sc(0.28);
+  g.strokeRect(px(x)-r,py(y)-r,r*2,r*2);
+  g.beginPath(); g.moveTo(px(x)-r*0.5,py(y)); g.lineTo(px(x)+r*0.5,py(y)); g.stroke();
+  g.beginPath(); g.moveTo(px(x),py(y)-r*0.5); g.lineTo(px(x),py(y)+r*0.5); g.stroke();
+  g.restore();
+}
+function zoneRing(g,x,y,r,color){
+  g.save(); g.strokeStyle=color; g.lineWidth=lw(3);
+  g.beginPath(); g.arc(px(x),py(y),sc(r),0,TAU); g.stroke();
+  g.globalAlpha=0.08; g.fillStyle=color; g.fill();
+  g.restore();
+}
+function arcProgress(g,x,y,r,f,color){
+  g.save(); g.strokeStyle=color; g.lineWidth=lw(5); g.lineCap='round';
+  g.beginPath(); g.arc(px(x),py(y),sc(r),-Math.PI/2,-Math.PI/2+TAU*clamp(f,0,1)); g.stroke();
+  g.restore();
+}
+function headingRay(g,ang,color){
+  g.save(); g.strokeStyle=color; g.lineWidth=lw(3); g.setLineDash([lw(8),lw(6)]);
+  g.beginPath(); g.moveTo(px(drone.x),py(drone.y));
+  g.lineTo(px(drone.x+Math.sin(ang)*1.1),py(drone.y+Math.cos(ang)*1.1)); g.stroke();
+  g.restore();
+}
+function corridorDraw(g,dir,w){
+  g.save(); g.fillStyle='rgba(79,168,255,.06)'; g.strokeStyle='rgba(79,168,255,.3)';
+  g.lineWidth=lw(2); g.setLineDash([lw(6),lw(6)]);
+  if(dir==='v'){ g.fillRect(px(-w),py(2.15),sc(w*2),sc(4.3)); g.strokeRect(px(-w),py(2.15),sc(w*2),sc(4.3)); }
+  else{ g.fillRect(px(-2.15),py(w),sc(4.3),sc(w*2)); g.strokeRect(px(-2.15),py(w),sc(4.3),sc(w*2)); }
+  g.restore();
+}
+function pylon(g,x,y){
+  g.save();
+  g.fillStyle='#a78bfa'; g.beginPath(); g.arc(px(x),py(y),lw(7),0,TAU); g.fill();
+  g.strokeStyle='rgba(167,139,250,.5)'; g.lineWidth=lw(2);
+  g.beginPath(); g.arc(px(x),py(y),lw(12),0,TAU); g.stroke();
+  g.restore();
+}
+function goalPosts(g,yy){
+  g.save(); g.strokeStyle='#e9f1f7'; g.lineWidth=lw(4); g.lineCap='round';
+  g.beginPath(); g.moveTo(px(-0.8),py(yy)); g.lineTo(px(0.8),py(yy)); g.stroke();
+  g.fillStyle='#e9f1f7';
+  g.beginPath(); g.arc(px(-0.8),py(yy),lw(5),0,TAU); g.fill();
+  g.beginPath(); g.arc(px(0.8),py(yy),lw(5),0,TAU); g.fill();
+  // net
+  g.strokeStyle='rgba(233,241,247,.18)'; g.lineWidth=1;
+  for(let k=-0.8;k<=0.8;k+=0.16){ g.beginPath(); g.moveTo(px(k),py(yy)); g.lineTo(px(k),py(yy+0.22)); g.stroke(); }
+  g.restore();
+}
+function wText(g,x,y,txt,color){
+  g.save(); g.fillStyle=color; g.font=`700 ${lw(13)}px "Microsoft JhengHei",sans-serif`;
+  g.textAlign='center'; g.textBaseline='middle'; g.fillText(txt,px(x),py(y)); g.restore();
+}
+function distToSquare(x,y,h){
+  const dx=Math.max(Math.abs(x)-h,0), dy=Math.max(Math.abs(y)-h,0);
+  const outside=Math.hypot(dx,dy);
+  const inside=Math.min(h-Math.abs(x),h-Math.abs(y));
+  return Math.abs(x)<=h&&Math.abs(y)<=h ? inside : outside; // distance to edge either way
+}
+/* altitude ladder on right edge */
+let altBand=null;
+function altBandMark(g,a,b,shuttle){ altBand={a,b,shuttle:!!shuttle}; }
+function drawAltLadder(g){
+  const X=CW-lw(34), top=lw(30), bot=CW-lw(30), H=bot-top, maxZ=2.6;
+  const zy=z=>bot-(z/maxZ)*H;
+  g.save();
+  g.fillStyle='rgba(13,21,32,.75)';
+  g.fillRect(X-lw(14),top-lw(14),lw(44),H+lw(28));
+  g.strokeStyle='#223148'; g.strokeRect(X-lw(14),top-lw(14),lw(44),H+lw(28));
+  if(altBand){
+    g.fillStyle=altBand.shuttle?'rgba(79,168,255,.18)':'rgba(79,227,163,.18)';
+    g.fillRect(X-lw(9),zy(altBand.b),lw(18),zy(altBand.a)-zy(altBand.b));
+    g.strokeStyle=altBand.shuttle?'rgba(79,168,255,.6)':'rgba(79,227,163,.6)'; g.lineWidth=1;
+    g.strokeRect(X-lw(9),zy(altBand.b),lw(18),zy(altBand.a)-zy(altBand.b));
+  }
+  g.strokeStyle='#3c4f68'; g.lineWidth=1; g.fillStyle='#5c7186';
+  g.font=`${lw(9)}px Consolas,monospace`; g.textAlign='right';
+  for(let z=0;z<=2.5;z+=0.5){
+    g.beginPath(); g.moveTo(X-lw(4),zy(z)); g.lineTo(X+lw(4),zy(z)); g.stroke();
+    g.fillText(z.toFixed(1),X-lw(8),zy(z)+lw(3));
+  }
+  // marker
+  const inB=altBand&&drone.z>=altBand.a&&drone.z<=altBand.b;
+  g.fillStyle=inB?'#4fe3a3':(altBand?'#ff8a3c':'#4fe3a3');
+  g.beginPath();
+  g.moveTo(X+lw(14),zy(clamp(drone.z,0,maxZ)));
+  g.lineTo(X+lw(6),zy(clamp(drone.z,0,maxZ))-lw(5));
+  g.lineTo(X+lw(6),zy(clamp(drone.z,0,maxZ))+lw(5));
+  g.closePath(); g.fill();
+  g.textAlign='left'; g.fillStyle='#8ca3b8'; g.font=`${lw(9)}px Consolas,monospace`;
+  g.save(); g.translate(X+lw(24),top+H/2); g.rotate(-Math.PI/2); g.textAlign='center';
+  g.fillText('ALTITUDE m',0,0); g.restore();
+  g.restore();
+}
+/* compass tape */
+function drawCompass(g){
+  const y=lw(20), w=CW*0.42, x0=CW/2-w/2;
+  g.save();
+  g.fillStyle='rgba(13,21,32,.75)'; g.fillRect(x0,y-lw(12),w,lw(26));
+  g.strokeStyle='#223148'; g.strokeRect(x0,y-lw(12),w,lw(26));
+  g.beginPath(); g.rect(x0,y-lw(12),w,lw(26)); g.clip();
+  const deg=(drone.hdg*180/Math.PI%360+360)%360;
+  const names={0:'前',90:'右',180:'後',270:'左'};
+  g.font=`${lw(10)}px Consolas,monospace`; g.textAlign='center';
+  for(let d=-120;d<=120;d+=15){
+    let a=Math.round((deg+d)/15)*15; const off=(a-deg+540)%360-180;
+    const xx=CW/2+off*(w/240); const am=((a%360)+360)%360;
+    if(Math.abs(off)>120) continue;
+    if(am%90===0){ g.fillStyle='#ff8a3c'; g.fillText(names[am],xx,y+lw(6));
+      g.strokeStyle='#ff8a3c'; g.beginPath(); g.moveTo(xx,y-lw(11)); g.lineTo(xx,y-lw(6)); g.stroke(); }
+    else{ g.fillStyle='#5c7186'; g.strokeStyle='#3c4f68';
+      g.beginPath(); g.moveTo(xx,y-lw(11)); g.lineTo(xx,y-lw(8)); g.stroke(); }
+  }
+  g.restore();
+  // center needle
+  g.fillStyle='#4fe3a3';
+  g.beginPath(); g.moveTo(CW/2,y+lw(15)); g.lineTo(CW/2-lw(5),y+lw(21)); g.lineTo(CW/2+lw(5),y+lw(21)); g.closePath(); g.fill();
+}
+/* drone sprite */
+function drawDrone(g){
+  const x=px(drone.x), y=py(drone.y);
+  const size=lw(16)*(1+drone.z*0.16);
+  // shadow
+  g.save();
+  g.fillStyle='rgba(0,0,0,.45)';
+  g.beginPath(); g.ellipse(x+lw(3)+drone.z*lw(4), y+lw(3)+drone.z*lw(4), lw(13),lw(9),0,0,TAU); g.fill();
+  g.restore();
+  g.save();
+  g.translate(x,y); g.rotate(drone.hdg);
+  // prop guard ball (drone soccer cage)
+  g.strokeStyle=drone.motors?'rgba(79,168,255,.85)':'rgba(140,163,184,.5)';
+  g.lineWidth=lw(2.4);
+  g.beginPath(); g.arc(0,0,size,0,TAU); g.stroke();
+  g.strokeStyle='rgba(79,168,255,.3)';
+  g.beginPath(); g.ellipse(0,0,size,size*0.45,0,0,TAU); g.stroke();
+  g.beginPath(); g.ellipse(0,0,size*0.45,size,0,0,TAU); g.stroke();
+  // arms + props
+  drone.rot+=drone.motors?0.5:0.02;
+  const pr=size*0.42;
+  [[-0.62,-0.62],[0.62,-0.62],[-0.62,0.62],[0.62,0.62]].forEach((p,i)=>{
+    const ax=p[0]*size*0.62, ay=p[1]*size*0.62;
+    g.strokeStyle='#2b3b52'; g.lineWidth=lw(3);
+    g.beginPath(); g.moveTo(0,0); g.lineTo(ax,ay); g.stroke();
+    g.save(); g.translate(ax,ay); g.rotate(drone.rot*(i%2?1:-1));
+    g.strokeStyle=drone.motors?'rgba(233,241,247,.75)':'rgba(140,163,184,.4)'; g.lineWidth=lw(2);
+    g.beginPath(); g.moveTo(-pr,0); g.lineTo(pr,0); g.stroke();
+    g.restore();
+  });
+  // body + nose (orange = 機頭)
+  g.fillStyle='#17222f'; g.strokeStyle='#3a4d68'; g.lineWidth=lw(1.5);
+  g.beginPath(); g.arc(0,0,size*0.34,0,TAU); g.fill(); g.stroke();
+  g.fillStyle='#ff8a3c';
+  g.beginPath(); g.moveTo(0,-size*0.95); g.lineTo(-size*0.22,-size*0.45); g.lineTo(size*0.22,-size*0.45);
+  g.closePath(); g.fill();
+  g.restore();
+  // motors-off marker
+  if(!drone.motors){
+    g.fillStyle='#ff5c5c'; g.font=`700 ${lw(11)}px Consolas,monospace`; g.textAlign='center';
+    g.fillText('PWR OFF',x,y-size-lw(8));
+  }
+}
+
+/* =========================================================
+   PHYSICS
+   ========================================================= */
+function physics(dt){
+  const wind=M?M.wind:0.2;
+  const wx=Math.sin(t*0.55+windPhase)*wind*0.6 + Math.sin(t*1.7)*wind*0.25;
+  const wy=Math.cos(t*0.43+windPhase*2)*wind*0.6 + Math.cos(t*1.3)*wind*0.25;
+  touchdown.justLanded=false;
+
+  if(drone.motors){
+    drone.hdg+=stick.yaw*2.6*dt;
+    if(drone.z>0.02){
+      const fX=Math.sin(drone.hdg), fY=Math.cos(drone.hdg);
+      const rX=Math.cos(drone.hdg), rY=-Math.sin(drone.hdg);
+      const A=3.4;
+      drone.vx+=(rX*stick.roll*A + fX*stick.pitch*A + wx)*dt;
+      drone.vy+=(rY*stick.roll*A + fY*stick.pitch*A + wy)*dt;
+    }
+    drone.vz+=stick.thr*3.2*dt;
+    drone.vz-=drone.vz*2.6*dt;
+  } else {
+    drone.vz-=4.5*dt;
+  }
+  drone.vx-=drone.vx*1.7*dt;
+  drone.vy-=drone.vy*1.7*dt;
+
+  // grounded
+  if(drone.z<=0.001 && drone.vz<=0){
+    drone.vz=0;
+    drone.vx-=drone.vx*8*dt; drone.vy-=drone.vy*8*dt;
+    if(drone.motors && stick.thr>0.18) drone.vz=0.25; // lift-off
+  }
+  drone.x+=drone.vx*dt; drone.y+=drone.vy*dt;
+  const prevZ=drone.z;
+  drone.z+=drone.vz*dt;
+  if(drone.z>2.6){ drone.z=2.6; drone.vz=Math.min(0,drone.vz); }
+  if(drone.z<=0 && prevZ>0){
+    // touchdown
+    if(drone.vz<-1.5){ addFault('重落地!下降太快'); ping(220); }
+    touchdown.t=t; touchdown.vz=drone.vz; touchdown.justLanded=true;
+    drone.z=0; drone.vz=0;
+  }
+  // walls
+  const h=world.half-0.12;
+  if(Math.abs(drone.x)>h){ drone.x=clamp(drone.x,-h,h); drone.vx*=-0.35; }
+  if(Math.abs(drone.y)>h){ drone.y=clamp(drone.y,-h,h); drone.vy*=-0.35; }
+}
+
+/* =========================================================
+   INPUT — keyboard + virtual sticks
+   ========================================================= */
+window.addEventListener('keydown',e=>{
+  if(scene!=='play') return;
+  const k=e.key.toLowerCase();
+  if(['w','s','a','d','arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
+  keys[k]=true;
+  if(k==='x') doCut();
+  if(k==='r') startMission(mi);
+});
+window.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
+
+function makeStick(el,onMove){
+  const knob=el.querySelector('.knob');
+  let pid=null;
+  function setFromEvent(ev){
+    const r=el.getBoundingClientRect();
+    let dx=(ev.clientX-r.left-r.width/2)/(r.width/2);
+    let dy=(ev.clientY-r.top-r.height/2)/(r.height/2);
+    const m=Math.hypot(dx,dy); if(m>1){dx/=m;dy/=m;}
+    knob.style.left=(31+dx*31)+'%'; knob.style.top=(31+dy*31)+'%';
+    onMove(dx,-dy);
+  }
+  el.addEventListener('pointerdown',ev=>{ pid=ev.pointerId; el.setPointerCapture(pid); setFromEvent(ev); });
+  el.addEventListener('pointermove',ev=>{ if(ev.pointerId===pid) setFromEvent(ev); });
+  const end=ev=>{ if(ev.pointerId!==pid) return; pid=null; knob.style.left='31%'; knob.style.top='31%'; onMove(0,0); };
+  el.addEventListener('pointerup',end); el.addEventListener('pointercancel',end);
+  return {knob};
+}
+const vL={x:0,y:0}, vR={x:0,y:0};
+const stL=makeStick($('stickL'),(x,y)=>{vL.x=x;vL.y=y;});
+const stR=makeStick($('stickR'),(x,y)=>{vR.x=x;vR.y=y;});
+
+function readSticks(){
+  const kThr=(keys['w']?1:0)+(keys['s']?-1:0);
+  const kYaw=(keys['d']?1:0)+(keys['a']?-1:0);
+  const kPit=(keys['arrowup']?1:0)+(keys['arrowdown']?-1:0);
+  const kRol=(keys['arrowright']?1:0)+(keys['arrowleft']?-1:0);
+  stick.thr=clamp(kThr+vL.y,-1,1);
+  stick.yaw=clamp(kYaw+vL.x,-1,1);
+  stick.pitch=clamp(kPit+vR.y,-1,1);
+  stick.roll=clamp(kRol+vR.x,-1,1);
+  // keyboard reflects on knobs when virtual idle
+  if(vL.x===0&&vL.y===0){ stL.knob.style.left=(31+stick.yaw*28)+'%'; stL.knob.style.top=(31-stick.thr*28)+'%'; }
+  if(vR.x===0&&vR.y===0){ stR.knob.style.left=(31+stick.roll*28)+'%'; stR.knob.style.top=(31-stick.pitch*28)+'%'; }
+  if(!started && scene==='play' && (Math.abs(stick.thr)+Math.abs(stick.yaw)+Math.abs(stick.pitch)+Math.abs(stick.roll))>0.15){
+    started=true;
+  }
+}
+function doCut(){
+  if(scene!=='play'||!drone.motors) return;
+  drone.motors=false; cutAt=t; ping(300);
+  if(M&&M.id!==10&&drone.z>0.3) flashWarn('空中斷電!自由落體中');
+}
+$('btnCut').addEventListener('click',doCut);
+$('btnRetry').addEventListener('click',()=>startMission(mi));
+
+/* =========================================================
+   SCENE FLOW
+   ========================================================= */
+function stars0(id){ const p=P(); return p&&p.stars?(p.stars[id]||0):0; }
+function unlocked(i){
+  if(save.teacher) return true;
+  if(i===0) return true;
+  return stars0(missions[i-1].id)>0;
+}
+function starStr(n,total){
+  let s=''; for(let k=0;k<(total||3);k++) s+= k<n?'★':'<span class="off">★</span>';
+  return s;
+}
+function renderMenu(){
+  const g1=$('grid1'), g2=$('grid2'); g1.innerHTML=''; g2.innerHTML='';
+  let tot=0;
+  missions.forEach((m,i)=>{
+    tot+=stars0(m.id);
+    const b=document.createElement('button');
+    b.className='mcard'+(unlocked(i)?'':' locked');
+    b.innerHTML=`<span class="num">MISSION ${String(m.id).padStart(2,'0')}</span>
+      <span class="nm">${m.name}</span>
+      <span class="skill">${m.skill}</span>
+      <span class="stars">${starStr(stars0(m.id))}</span>`;
+    if(unlocked(i)) b.addEventListener('click',()=>openBrief(i));
+    else b.disabled=true;
+    (m.stage===1?g1:g2).appendChild(b);
+  });
+  $('totalStars').textContent=`★ ${tot} / 30`;
+  const rank= tot>=27?'金牌競技選手': tot>=20?'正式球員': tot>=12?'儲備球員': tot>=5?'初階飛手':'見習飛手';
+  $('rankTag').textContent=rank;
+  $('btnPlayer').textContent = save.current?('👤 學員:'+save.current):'👤 學員:未登記(點我)';
+  $('btnTeacher').textContent = save.teacher?'教師模式:已解鎖 ✓':'教師模式:全部解鎖';
+}
+function openBrief(i){
+  mi=i; M=missions[i];
+  $('bTag').textContent=`任務 ${String(M.id).padStart(2,'0')}・第${M.stage===1?'一':'二'}階段`;
+  $('bTitle').textContent=M.name;
+  $('bSkill').textContent=M.skill;
+  $('bGoal').innerHTML=M.goal;
+  $('bKeys').innerHTML='🕹️ '+M.keys;
+  $('ovlBrief').classList.add('show');
+  scene='brief';
+  $('menu').style.display='none'; $('game').style.display='block';
+  prepMission();
+  resize();
+  if(!save.current){ renderPlayers(); $('ovlPlayer').classList.add('show'); }
+}
+function prepMission(){
+  drone.x=0; drone.y=0; drone.z=0; drone.vx=drone.vy=drone.vz=0; drone.hdg=0; drone.motors=true;
+  t=0; started=false; faults=0; warnAcc=0; altBand=null;
+  touchdown={t:-9,vz:0,justLanded:false}; cutAt=-9;
+  $('roFault').textContent='0'; $('roFaultWrap').classList.remove('warnc');
+  $('gTitle').textContent=`任務 ${String(M.id).padStart(2,'0')}・${M.name}`;
+  $('gSub').textContent=M.skill;
+  $('gCoach').innerHTML=M.coach;
+  const ul=$('gSteps'); ul.innerHTML='';
+  M.steps.forEach(s=>{ const li=document.createElement('li'); li.textContent=s; ul.appendChild(li); });
+  M.setup();
+  liveGoal(M.goal);
+  refreshCurrentStep();
+}
+function startMission(i){
+  mi=i; M=missions[i];
+  $('ovlBrief').classList.remove('show');
+  $('ovlDone').classList.remove('show');
+  prepMission(); scene='play';
+}
+$('btnStart').addEventListener('click',()=>startMission(mi));
+$('btnBriefBack').addEventListener('click',()=>backToMenu());
+$('btnBack').addEventListener('click',()=>backToMenu());
+$('btnDoneBack').addEventListener('click',()=>backToMenu());
+function backToMenu(){
+  scene='menu';
+  $('ovlBrief').classList.remove('show'); $('ovlDone').classList.remove('show');
+  $('game').style.display='none'; $('menu').style.display='block';
+  renderMenu();
+}
+function completeMission(){
+  scene='done';
+  const time=t;
+  let s = time<=M.par?3 : time<=M.par*1.6?2 : 1;
+  s = Math.max(1, s - Math.floor(faults/3));
+  const pl=ensurePlayer();
+  if(s>(pl.stars[M.id]||0)) pl.stars[M.id]=s;
+  const best=pl.results[M.id];
+  if(!best || s>best.s || (s===best.s && time<best.t)){
+    pl.results[M.id]={s, t:+time.toFixed(1), f:faults, d:new Date().toISOString().slice(0,10)};
+  }
+  persist();
+  $('rCode').textContent=makeCode(save.current, M.id, s, time, faults);
+  $('rTitle').textContent=`任務 ${String(M.id).padStart(2,'0')}・${M.name}`;
+  $('rStars').innerHTML=starStr(s);
+  $('rTime').textContent=`TIME ${time.toFixed(1)}s(3★ 標準 ≤ ${M.par}s)`;
+  $('rFault').textContent=`FAULT ${faults}`;
+  const v = s===3?'教科書等級的飛行!這一科你已經可以當小教練了。'
+        : s===2?'穩穩過關。想拿三星:動作可以更果斷,桿量更小更早。'
+        : '完成了!先求穩、再求快——多飛兩趟,星星自然會來。';
+  $('rVerdict').textContent=v + (faults>0?`(本次失誤 ${faults} 次,失誤每 3 次扣 1 星)`:'');
+  const hasNext = mi<missions.length-1;
+  $('btnNext').style.display=hasNext?'':'none';
+  $('ovlDone').classList.add('show');
+  ping(1175); setTimeout(()=>ping(1568),140);
+}
+$('btnNext').addEventListener('click',()=>{ if(mi<missions.length-1) openBrief(mi+1); });
+$('btnAgain').addEventListener('click',()=>startMission(mi));
+
+$('btnStd').addEventListener('click',()=>$('ovlStd').classList.add('show'));
+$('btnStdClose').addEventListener('click',()=>$('ovlStd').classList.remove('show'));
+$('btnTeacher').addEventListener('click',()=>{ save.teacher=!save.teacher; persist(); renderMenu(); });
+$('btnReset').addEventListener('click',()=>{ save={players:{},current:'',teacher:save.teacher}; persist(); renderMenu(); });
+
+/* =========================================================
+   學員登記
+   ========================================================= */
+function cleanName(n){ return (n||'').replace(/[\s|,-]/g,'').slice(0,10); }
+function renderPlayers(){
+  const box=$('plList'); box.innerHTML='';
+  Object.keys(save.players).forEach(nm=>{
+    const p=save.players[nm];
+    const tot=Object.values(p.stars||{}).reduce((a,b)=>a+b,0);
+    const chip=document.createElement('button');
+    chip.className='pchip'+(nm===save.current?' cur':'');
+    chip.innerHTML=`${nm} <span class="st">★${tot}</span> <span class="del">✕</span>`;
+    chip.querySelector('.del').addEventListener('click',ev=>{
+      ev.stopPropagation();
+      if(chip.classList.contains('confirmdel')){
+        delete save.players[nm];
+        if(save.current===nm) save.current='';
+        persist(); renderPlayers(); renderMenu();
+      } else {
+        chip.classList.add('confirmdel');
+        chip.querySelector('.del').textContent='再按一次刪除';
+      }
+    });
+    chip.addEventListener('click',()=>{ save.current=nm; persist(); renderPlayers(); renderMenu(); });
+    box.appendChild(chip);
+  });
+}
+$('btnPlayer').addEventListener('click',()=>{ renderPlayers(); $('plName').value=''; $('ovlPlayer').classList.add('show'); });
+$('btnPlClose').addEventListener('click',()=>$('ovlPlayer').classList.remove('show'));
+$('btnPlOk').addEventListener('click',()=>{
+  const nm=cleanName($('plName').value);
+  if(nm){
+    save.players[nm]=save.players[nm]||{stars:{},results:{}};
+    save.current=nm; persist();
+  }
+  $('ovlPlayer').classList.remove('show');
+  renderMenu();
+});
+
+/* =========================================================
+   成績代碼(名字-關卡-星-秒-失誤-校驗碼)
+   ========================================================= */
+function crc(s){ let h=7; for(const c of s) h=(h*31+c.codePointAt(0))%46656; return h.toString(36).toUpperCase().padStart(3,'0'); }
+function makeCode(name,id,s,tm,f){
+  name=cleanName(name)||'訪客';
+  const body=[name,id,s,(+tm).toFixed(1),f];
+  return body.join('-')+'-'+crc(body.join('|'));
+}
+function parseCode(str){
+  const p=(str||'').trim().split('-');
+  if(p.length!==6) return null;
+  const [name,id,s,tm,f,ck]=p;
+  if(crc([name,id,s,tm,f].join('|'))!==ck.toUpperCase()) return null;
+  const idn=+id, sn=+s, tn=parseFloat(tm), fn=+f;
+  if(!name||!(idn>=1&&idn<=10)||!(sn>=1&&sn<=3)||!(tn>0)||!(fn>=0)) return null;
+  return {name:cleanName(name), id:idn, s:sn, t:tn, f:fn};
+}
+function mergeResult(name,id,r){
+  if(!name) return;
+  const p=save.players[name]=save.players[name]||{stars:{},results:{}};
+  if(r.s>(p.stars[id]||0)) p.stars[id]=r.s;
+  const b=p.results[id];
+  if(!b || r.s>b.s || (r.s===b.s && r.t<b.t)) p.results[id]={s:r.s,t:r.t,f:r.f,d:r.d||new Date().toISOString().slice(0,10)};
+}
+$('btnCopyCode').addEventListener('click',()=>{
+  const txt=$('rCode').textContent;
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt).catch(()=>{});
+  $('btnCopyCode').textContent='已複製 ✓';
+  setTimeout(()=>{$('btnCopyCode').textContent='複製';},1500);
+});
+
+/* =========================================================
+   計分排行榜
+   ========================================================= */
+let boardTab='total';
+function openBoard(){
+  const sel=$('bdMission');
+  if(!sel.options.length) missions.forEach(m=>{
+    const o=document.createElement('option'); o.value=m.id;
+    o.textContent=`任務 ${String(m.id).padStart(2,'0')} ${m.name}`;
+    sel.appendChild(o);
+  });
+  renderBoard(); $('ovlBoard').classList.add('show');
+}
+function renderBoard(){
+  $('tabTotal').classList.toggle('on',boardTab==='total');
+  $('tabMission').classList.toggle('on',boardTab==='mission');
+  $('bdMission').style.display=boardTab==='mission'?'':'none';
+  const tb=$('bdTable');
+  if(boardTab==='total'){
+    const rows=Object.entries(save.players).map(([nm,p])=>{
+      const rs=Object.values(p.results||{});
+      return {nm,
+        stars:Object.values(p.stars||{}).reduce((a,b)=>a+b,0),
+        done:rs.length,
+        time:rs.reduce((a,r)=>a+r.t,0)};
+    }).filter(r=>r.done>0||r.stars>0);
+    rows.sort((a,b)=>b.stars-a.stars || a.time-b.time || a.nm.localeCompare(b.nm,'zh-Hant'));
+    tb.innerHTML='<tr><th>排名</th><th>學員</th><th>總星等</th><th>完成關數</th><th>總時間</th></tr>'+
+      (rows.length?rows.map((r,i)=>`<tr${i===0?' class="top1"':''}><td>${i+1}</td><td class="nm">${r.nm}</td><td class="st">★${r.stars}</td><td>${r.done} / 10</td><td>${r.time.toFixed(1)}s</td></tr>`).join('')
+      :'<tr><td colspan="5" style="color:var(--faint)">還沒有成績——完成任務或登錄成績代碼後就會出現。</td></tr>');
+  } else {
+    const id=+$('bdMission').value||1;
+    const rows=[];
+    Object.entries(save.players).forEach(([nm,p])=>{ const r=(p.results||{})[id]; if(r) rows.push(Object.assign({nm},r)); });
+    rows.sort((a,b)=>b.s-a.s || a.t-b.t || a.nm.localeCompare(b.nm,'zh-Hant'));
+    tb.innerHTML='<tr><th>排名</th><th>學員</th><th>星等</th><th>時間</th><th>失誤</th><th>日期</th></tr>'+
+      (rows.length?rows.map((r,i)=>`<tr${i===0?' class="top1"':''}><td>${i+1}</td><td class="nm">${r.nm}</td><td class="st">${'★'.repeat(r.s)}</td><td>${r.t.toFixed(1)}s</td><td>${r.f}</td><td>${r.d||'—'}</td></tr>`).join('')
+      :'<tr><td colspan="6" style="color:var(--faint)">這一關還沒有成績。</td></tr>');
+  }
+}
+$('btnBoard').addEventListener('click',openBoard);
+$('btnBoardClose').addEventListener('click',()=>$('ovlBoard').classList.remove('show'));
+$('tabTotal').addEventListener('click',()=>{boardTab='total';renderBoard();});
+$('tabMission').addEventListener('click',()=>{boardTab='mission';renderBoard();});
+$('bdMission').addEventListener('change',renderBoard);
+
+$('btnAddCode').addEventListener('click',()=>{
+  const lines=$('codeIn').value.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+  let ok=0,bad=0;
+  lines.forEach(l=>{ const r=parseCode(l); if(r){ mergeResult(r.name,r.id,r); ok++; } else bad++; });
+  if(ok) persist();
+  const m=$('codeMsg');
+  m.textContent=lines.length?`已登錄 ${ok} 筆${bad?`,${bad} 筆代碼有誤(請檢查是否抄錯)`:''}`:'請先貼上成績代碼';
+  m.classList.toggle('bad',bad>0||!lines.length);
+  if(ok){ $('codeIn').value=''; renderBoard(); renderMenu(); }
+});
+
+function download(fn,text,type){
+  const b=new Blob([text],{type}); const u=URL.createObjectURL(b);
+  const a=document.createElement('a'); a.href=u; a.download=fn;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u),5000);
+}
+$('btnCsv').addEventListener('click',()=>{
+  let csv='﻿學員,任務,任務名稱,星等,時間(秒),失誤,日期\n';
+  Object.entries(save.players).forEach(([nm,p])=>{
+    Object.entries(p.results||{}).forEach(([id,r])=>{
+      const m=missions.find(x=>x.id===+id);
+      csv+=`${nm},${id},${m?m.name:''},${r.s},${r.t},${r.f},${r.d||''}\n`;
+    });
+  });
+  download('無人機足球成績.csv',csv,'text/csv');
+});
+$('btnJson').addEventListener('click',()=>{
+  download('無人機足球成績備份.json',JSON.stringify({players:save.players},null,1),'application/json');
+});
+$('btnImp').addEventListener('click',()=>$('impFile').click());
+$('impFile').addEventListener('change',ev=>{
+  const f=ev.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const data=JSON.parse(rd.result);
+      const players=data.players||data;
+      let n=0;
+      Object.entries(players).forEach(([nm,p])=>{
+        Object.entries(p.results||{}).forEach(([id,r])=>{ mergeResult(cleanName(nm),+id,r); n++; });
+      });
+      persist(); renderBoard(); renderMenu();
+      $('codeMsg').textContent=`備份匯入完成,合併 ${n} 筆成績`; $('codeMsg').classList.remove('bad');
+    }catch(e){ $('codeMsg').textContent='匯入失敗:不是有效的備份檔'; $('codeMsg').classList.add('bad'); }
+  };
+  rd.readAsText(f); ev.target.value='';
+});
+$('btnClearBoard').addEventListener('click',()=>{
+  const b=$('btnClearBoard');
+  if(b.dataset.arm){
+    save.players={}; save.current=''; persist(); renderBoard(); renderMenu();
+    b.textContent='清空成績'; delete b.dataset.arm;
+  } else {
+    b.dataset.arm='1'; b.textContent='再按一次確認清空!';
+    setTimeout(()=>{ b.textContent='清空成績'; delete b.dataset.arm; },3000);
+  }
+});
+
+/* =========================================================
+   MAIN LOOP
+   ========================================================= */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.033,(now-last)/1000); last=now;
+  if(scene==='play'){
+    readSticks();
+    if(started) t+=dt;
+    physics(dt);
+    altBand=null;
+    const done=M.update(dt);
+    refreshCurrentStep();
+    if(t>warnUntil) $('warnflash').classList.remove('on');
+    if(done) completeMission();
+  }
+  if(scene==='play'||scene==='brief'||scene==='done'){
+    drawArena();
+    if(M){ M.draw(ctx); }
+    drawDrone(ctx);
+    drawAltLadder(ctx);
+    drawCompass(ctx);
+    // HUD readouts
+    $('roTime').textContent=t.toFixed(1);
+    $('dAlt').textContent=fmt2(drone.z)+'m';
+    $('dAlt').classList.toggle('warnc', altBand&&(drone.z<altBand.a||drone.z>altBand.b)&&drone.z>0.05);
+    const deg=((drone.hdg*180/Math.PI)%360+360)%360;
+    const dirName= deg<45||deg>=315?'前': deg<135?'右': deg<225?'後':'左';
+    $('dHdg').textContent=`${dirName} ${String(Math.round(deg)).padStart(3,'0')}°`;
+    $('dSpd').textContent=fmt1(Math.hypot(drone.vx,drone.vy))+'m/s';
+  }
+  requestAnimationFrame(frame);
+}
+resize();
+renderMenu();
+requestAnimationFrame(frame);
+</script>
+
+</html>
