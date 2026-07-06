@@ -1253,6 +1253,7 @@ function openBrief(i){
   $('bSkill').textContent=M.skill;
   $('bGoal').innerHTML=M.goal;
   $('bKeys').innerHTML='🕹️ '+M.keys;
+  $('ovlDone').classList.remove('show');
   $('ovlBrief').classList.add('show');
   scene='brief';
   $('menu').style.display='none'; $('game').style.display='block';
