@@ -593,24 +593,22 @@ const missions=[
 },
 {
   id:4, stage:1, name:'左右側飛控制', skill:'前後與左右側飛控制',
-  goal:'側飛=機身不轉、整台往左右「平移」滑動。從左邊起飛,機頭全程朝前不可轉(偏轉超過 ±15° 記一次失誤):先向右側飛到右邊的環停 2 秒,再向左側飛回左邊的環停 2 秒。',
-  keys:'只用<b>右桿 ←/→</b> 側飛,<b>不要碰左桿 A/D(那是轉機頭)</b>。機頭永遠朝前才算數。',
-  coach:'<b>克服非機頭指向的移動。</b>側飛是無人機足球的看家本領——比賽裡你沒空轉機頭。身體會想「轉過去再飛」,忍住;讓左右手分工,眼睛守住機頭箭頭。',
+  goal:'側飛=整台機體往左右「平移」滑動。向右側飛到右邊的環停 2 秒,再向左側飛回左邊的環停 2 秒。',
+  keys:'用<b>右桿 ←/→</b> 讓機體左右移動,穩穩停進圈裡就好。',
+  coach:'<b>熟悉左右平移的手感。</b>側飛是無人機足球的看家本領——先把「機體往左右滑」練順,在兩個環之間穩穩來回,推桿別太猛以免滑過頭。',
   par:30, wind:0.24,
-  steps:['起飛,機頭朝前不要轉','向右側飛到右環,停 2 秒','向左側飛回左環,停 2 秒'],
+  steps:['起飛','向右側飛到右環,停 2 秒','向左側飛回左環,停 2 秒'],
   st:{i:0,hold:0},
   setup(){ this.st={i:0,hold:0}; drone.x=-1.8; },
   update(dt){
     const s=this.st;
     setStep(0, drone.z>0.5);
-    let hd=Math.abs(((drone.hdg*180/Math.PI)%360+540)%360-180); hd=180-hd; // deviation from 0
-    corridorCheck(dt, hd>15 && drone.z>0.4, '機頭偏了!保持朝前');
     const rings=[{x:1.8,y:0},{x:-1.8,y:0}];
     if(s.i<2){
       const r=rings[s.i];
-      if(drone.z>0.4 && Math.hypot(drone.x-r.x,drone.y-r.y)<=0.35 && hd<=15) s.hold+=dt; else s.hold=0;
+      if(drone.z>0.4 && Math.hypot(drone.x-r.x,drone.y-r.y)<=0.35) s.hold+=dt; else s.hold=0;
       if(s.hold>=2){ setStep(1+s.i,true); s.i++; s.hold=0; ping(); }
-      liveGoal(`${s.i===0?'向右側飛到右環':'向左側飛回左環'}・停留 ${fmt1(Math.min(2,s.hold))} / 2.0 秒・機頭偏差 ${hd.toFixed(0)}°`);
+      liveGoal(`${s.i===0?'向右側飛到右環':'向左側飛回左環'}・停留 ${fmt1(Math.min(2,s.hold))} / 2.0 秒`);
     }
     if(s.i>=2) return true;
   },
@@ -619,7 +617,6 @@ const missions=[
     padAt(g,-1.8,0);
     zoneRing(g,1.8,0,0.35, this.st.i===0?'#ff8a3c':'rgba(79,227,163,.9)');
     zoneRing(g,-1.8,0,0.35, this.st.i===1?'#ff8a3c':'rgba(79,227,163,.5)');
-    headingRay(g,0,'#ff8a3c');
   }
 },
 {
