@@ -619,7 +619,7 @@ const missions=[
     padAt(g,-1.8,0);
     zoneRing(g,1.8,0,0.35, this.st.i===0?'#ff8a3c':'rgba(79,227,163,.9)');
     zoneRing(g,-1.8,0,0.35, this.st.i===1?'#ff8a3c':'rgba(79,227,163,.5)');
-    headingRay(g,0,'rgba(79,168,255,.7)');
+    headingRay(g,0,'#ff8a3c');
   }
 },
 {
@@ -966,6 +966,13 @@ function headingRay(g,ang,color){
   g.save(); g.strokeStyle=color; g.lineWidth=lw(3); g.setLineDash([lw(8),lw(6)]);
   g.beginPath(); g.moveTo(px(drone.x),py(drone.y));
   g.lineTo(px(drone.x+Math.sin(ang)*1.1),py(drone.y+Math.cos(ang)*1.1)); g.stroke();
+  g.restore();
+}
+// 永遠跟著機頭橘箭頭的當前朝向虛線(HUD 綠,與目標橘線區分)
+function noseRay(g){
+  const ex=drone.x+Math.sin(drone.hdg)*0.95, ey=drone.y+Math.cos(drone.hdg)*0.95;
+  g.save(); g.strokeStyle='rgba(79,227,163,.55)'; g.lineWidth=lw(2); g.setLineDash([lw(5),lw(5)]);
+  g.beginPath(); g.moveTo(px(drone.x),py(drone.y)); g.lineTo(px(ex),py(ey)); g.stroke();
   g.restore();
 }
 function corridorDraw(g,dir,w){
@@ -1520,6 +1527,7 @@ function frame(now){
   if(scene==='play'||scene==='brief'||scene==='done'){
     drawArena();
     if(M){ M.draw(ctx); }
+    noseRay(ctx);
     drawDrone(ctx);
     drawAltLadder(ctx);
     drawCompass(ctx);
