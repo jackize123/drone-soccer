@@ -177,6 +177,27 @@
   .sticklb b{color:var(--dim)}
   .actionrow{display:flex; gap:8px; margin-top:10px}
   .actionrow .btn{flex:1; font-size:.85rem; padding:.5em .4em}
+
+  /* 觸控裝置(iPad):虛擬搖桿釘到畫面左右兩端,雙拇指操作 */
+  @media (pointer:coarse){
+    .controlbox{display:contents}
+    .sticksrow{display:contents}
+    .sticksrow>div{
+      position:fixed; bottom:calc(env(safe-area-inset-bottom,0px) + 16px);
+      z-index:40; width:min(34vw,160px); margin:0;
+    }
+    .sticksrow>div:first-child{ left:calc(env(safe-area-inset-left,0px) + 16px) }
+    .sticksrow>div:last-child{ right:calc(env(safe-area-inset-right,0px) + 16px) }
+    .stick{ max-width:none; width:100%; background:radial-gradient(circle at 50% 40%, #16202f, #0c1320); box-shadow:0 6px 20px rgba(0,0,0,.5) }
+    .sticklb{ background:rgba(5,8,13,.5); border-radius:8px; padding:2px 4px }
+    .actionrow{
+      position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 20px);
+      transform:translateX(-50%); z-index:40; width:auto; margin:0;
+    }
+    .actionrow .btn{ flex:none; padding:.6em 1em }
+    /* 連上實體手把時隱藏觸控搖桿(斷電/重試按鈕保留當備援) */
+    body.padon .sticksrow>div{ display:none }
+  }
   .btn.cut{border-color:#6b2a2a; color:#ff9c9c; background:#1d1214}
   .btn.cut:hover{border-color:var(--warn)}
 
@@ -344,7 +365,7 @@
         <div class="coach" id="gCoach">—</div>
       </div>
 
-      <div class="panelbox">
+      <div class="panelbox controlbox">
         <div class="sticksrow">
           <div>
             <div class="stick" id="stickL"><div class="axis"></div><div class="knob"></div></div>
@@ -985,6 +1006,13 @@ function headingRay(g,ang,color){
   g.lineTo(px(drone.x+Math.sin(ang)*1.1),py(drone.y+Math.cos(ang)*1.1)); g.stroke();
   g.restore();
 }
+// 永遠跟著機頭橘箭頭的當前朝向虛線(HUD 綠,與目標橘線區分)
+function noseRay(g){
+  const ex=drone.x+Math.sin(drone.hdg)*0.95, ey=drone.y+Math.cos(drone.hdg)*0.95;
+  g.save(); g.strokeStyle='rgba(79,227,163,.55)'; g.lineWidth=lw(2); g.setLineDash([lw(5),lw(5)]);
+  g.beginPath(); g.moveTo(px(drone.x),py(drone.y)); g.lineTo(px(ex),py(ey)); g.stroke();
+  g.restore();
+}
 function corridorDraw(g,dir,w){
   g.save(); g.fillStyle='rgba(79,168,255,.06)'; g.strokeStyle='rgba(79,168,255,.3)';
   g.lineWidth=lw(2); g.setLineDash([lw(6),lw(6)]);
@@ -1239,6 +1267,7 @@ const padAxes={thr:0,yaw:0,pit:0,rol:0};
 window.addEventListener('gamepadconnected',e=>{ padIndex=e.gamepad.index; setPadPill(true); ping(1046); });
 window.addEventListener('gamepaddisconnected',e=>{ if(padIndex===e.gamepad.index){ padIndex=null; setPadPill(false); } });
 function setPadPill(on){
+  document.body.classList.toggle('padon',on);
   [['padPill','padPillTxt'],['padPill2','padPillTxt2']].forEach(p=>{
     const el=$(p[0]); if(!el) return;
     el.classList.toggle('on',on);
@@ -1603,6 +1632,7 @@ function frame(now){
   if(scene==='play'||scene==='brief'||scene==='done'){
     drawArena();
     if(M){ M.draw(ctx); }
+    noseRay(ctx);
     drawDrone(ctx);
     drawAltLadder(ctx);
     drawCompass(ctx);
