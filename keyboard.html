@@ -654,9 +654,9 @@ const missions=[
 /* ---- STAGE 2 ---- */
 {
   id:6, stage:2, name:'2×2m 正方形航路', skill:'正方形航路',
-  goal:'依序通過四個角點環(西南→西北→東北→東南→回西南),沿正方形邊線飛行,偏離邊線太遠會記失誤。',
-  keys:'每個角先<b>減速、停穩、再轉向</b>。側飛派得上用場——四個邊可以不轉機頭飛完。',
-  coach:'<b>角點要「方」。</b>正方形航路考的是節奏:直線給桿、進角收桿。飛圓角代表你桿收太晚。進階挑戰:全程機頭朝前,只用 pitch/roll 完成——這才是足球場上的走位。',
+  goal:'依序通過四個角點環(西南→西北→東北→東南→回西南),沿正方形邊線飛行。每一段的機頭都要轉到跟前進方向一致(對準橘色指引線)才算通過——不能全程平移。偏離邊線太遠會記失誤。',
+  keys:'每個角<b>減速、把機頭轉到下一段前進方向、再前進</b>。左桿 A/D 轉機頭,右桿前推。',
+  coach:'<b>機頭跟著走位轉。</b>正方形四段方向都不同,機頭每段都要重新對準前進方向:先轉向、再推進。角點要「方」——直線給桿、進角收桿,飛圓角代表你桿收太晚。',
   par:42, wind:0.28,
   steps:['起飛,前往西南角','① 西北角','② 東北角','③ 東南角','④ 回到西南角'],
   st:{i:0},
@@ -664,6 +664,9 @@ const missions=[
   update(dt){
     const s=this.st, pts=[[-1,1],[1,1],[1,-1],[-1,-1]];
     setStep(0, drone.z>0.5);
+    const reqDeg=s.i*90;
+    const cur=((drone.hdg*180/Math.PI)%360+360)%360;
+    const hd=Math.abs(((cur-reqDeg)%360+540)%360-180);
     // corridor: nearest point on square edges
     if(drone.z>0.4){
       const dEdge=distToSquare(drone.x,drone.y,1);
@@ -671,8 +674,8 @@ const missions=[
     }
     if(s.i<4){
       const p=pts[s.i];
-      if(drone.z>0.4 && Math.hypot(drone.x-p[0],drone.y-p[1])<=0.35){ setStep(1+s.i,true); s.i++; ping(); }
-      liveGoal(`下一角點:<b style="color:var(--accent)">${['西北 ↖','東北 ↗','東南 ↘','西南 ↙'][Math.min(s.i,3)]}</b>(${s.i} / 4)`);
+      if(drone.z>0.4 && Math.hypot(drone.x-p[0],drone.y-p[1])<=0.35 && hd<=20){ setStep(1+s.i,true); s.i++; ping(); }
+      liveGoal(`飛往<b style="color:var(--accent)">${['西北 ↖','東北 ↗','東南 ↘','西南 ↙'][Math.min(s.i,3)]}</b>・機頭轉到 <b>${['前↑','右→','後↓','左←'][Math.min(s.i,3)]}</b>(偏差 ${hd.toFixed(0)}°)`);
     }
     if(s.i>=4) return true;
   },
@@ -686,6 +689,7 @@ const missions=[
       zoneRing(g,pts[k][0],pts[k][1],0.32, done?'rgba(79,227,163,.9)':cur?'#ff8a3c':'rgba(140,163,184,.35)');
       wText(g,pts[k][0],pts[k][1]+0.5,String(k+1), cur?'#ff8a3c':'#5c7186');
     }
+    if(s.i<4) headingRay(g, s.i*Math.PI/2, '#ff8a3c');
   }
 },
 {
