@@ -437,7 +437,8 @@
       <tr><td>定點懸停</td><td>維持在半徑 <b>50cm</b> 範圍內</td><td>持續 <b>10 秒</b></td></tr>
       <tr><td>四方位旋轉</td><td>每次旋轉 <b>90°</b>(右、後、左、前)</td><td>每個方位停 <b>3 秒</b></td></tr>
       <tr><td>穩定性標準</td><td>高度誤差 <b>&lt; 20cm</b></td><td>不可產生大幅起伏</td></tr>
-      <tr><td>守門練習</td><td><b>0.5m</b> 與 <b>2m</b> 之間來回升降</td><td>重複 <b>3 次</b></td></tr>
+      <tr><td>正方形航路</td><td>每個角點原地旋轉 <b>90°</b>,共 4 次</td><td>機頭對準前進方向</td></tr>
+      <tr><td>守門擋球</td><td>守備區內擋下射門,高度需對上(<b>±35cm</b>)</td><td>擋下 <b>5 球</b></td></tr>
       <tr><td>緊急斷電</td><td>落地後 <b>1 秒內</b>完成斷電</td><td>—</td></tr>
     </table>
     <div class="btnrow" style="margin-top:14px">
@@ -698,18 +699,19 @@ const missions=[
 },
 /* ---- STAGE 2 ---- */
 {
-  id:6, stage:2, name:'2×2m 正方形航路', skill:'正方形航路',
-  goal:'依序通過四個角點環(西南→西北→東北→東南→回西南),沿正方形邊線飛行。每一段的機頭都要轉到跟前進方向一致(對準橘色指引線)才算通過——不能全程平移。偏離邊線太遠會記失誤。',
-  keys:'每個角<b>減速、把機頭轉到下一段前進方向、再前進</b>。左桿 A/D 轉機頭,右桿前推。',
-  coach:'<b>機頭跟著走位轉。</b>正方形四段方向都不同,機頭每段都要重新對準前進方向:先轉向、再推進。角點要「方」——直線給桿、進角收桿,飛圓角代表你桿收太晚。',
-  par:42, wind:0.28,
-  steps:['起飛,前往西南角','① 西北角','② 東北角','③ 東南角','④ 回到西南角'],
-  st:{i:0},
-  setup(){ this.st={i:0}; drone.x=-1; drone.y=-1; },
+  id:6, stage:2, name:'2×2m 正方形航路', skill:'正方形航路(4 次旋轉)',
+  goal:'依序通過四個角點環(西南→西北→東北→東南→回西南),沿正方形邊線飛行。每到一個角點都要「原地把機頭旋轉 90°」對準下一段方向才能前進,回到西南角後再把機頭轉回正前方——全程共 4 次旋轉,少一次都不算過關。偏離邊線太遠會記失誤。',
+  keys:'每個角:<b>減速停住 → 左桿把機頭轉 90° → 再前進</b>。左桿 A/D 轉機頭,右桿前推。',
+  coach:'<b>機頭跟著走位轉,四個角=四次旋轉。</b>每一段方向都不同:先轉向、再推進,四次 90° 剛好轉滿一圈 360°。角點要「方」——直線給桿、進角收桿,飛圓角代表你桿收太晚。',
+  par:48, wind:0.28,
+  steps:['起飛,機頭朝前 ↑','直飛西北角 ①','旋轉 90° → 東北角 ②','旋轉 90° → 東南角 ③','旋轉 90° → 回西南角 ④','第 4 次旋轉:機頭轉回前 ↑,穩住 1 秒'],
+  st:{i:0,rot:0,aligned:true,hold:0},
+  setup(){ this.st={i:0,rot:0,aligned:true,hold:0}; drone.x=-1; drone.y=-1; },
   update(dt){
     const s=this.st, pts=[[-1,1],[1,1],[1,-1],[-1,-1]];
+    const DIRS=['前↑','右→','後↓','左←'];
     setStep(0, drone.z>0.5);
-    const reqDeg=s.i*90;
+    const reqDeg=(s.i<4?s.i:0)*90;
     const cur=((drone.hdg*180/Math.PI)%360+360)%360;
     const hd=Math.abs(((cur-reqDeg)%360+540)%360-180);
     // corridor: nearest point on square edges
@@ -719,10 +721,29 @@ const missions=[
     }
     if(s.i<4){
       const p=pts[s.i];
-      if(drone.z>0.4 && Math.hypot(drone.x-p[0],drone.y-p[1])<=0.35 && hd<=20){ setStep(1+s.i,true); s.i++; ping(); }
-      liveGoal(`飛往<b style="color:var(--accent)">${['西北 ↖','東北 ↗','東南 ↘','西南 ↙'][Math.min(s.i,3)]}</b>・機頭轉到 <b>${['前↑','右→','後↓','左←'][Math.min(s.i,3)]}</b>(偏差 ${hd.toFixed(0)}°)`);
+      if(!s.aligned){
+        // 剛過角點:必須在角點附近原地旋轉 90° 對準下一段
+        const c=pts[s.i-1];
+        const atCorner=Math.hypot(drone.x-c[0],drone.y-c[1])<=0.6;
+        if(hd<=20 && atCorner){ s.aligned=true; s.rot++; ping(1150); }
+        else{
+          if(drone.z>0.4 && !atCorner) flashWarn('回到角點,先把機頭轉到位再前進!');
+          liveGoal(`第 <b style="color:var(--accent)">${s.rot+1} / 4</b> 次旋轉:在角點把機頭轉到 <b>${DIRS[s.i]}</b>(偏差 ${hd.toFixed(0)}°)`);
+          return;
+        }
+      }
+      if(drone.z>0.4 && Math.hypot(drone.x-p[0],drone.y-p[1])<=0.35 && hd<=20){
+        setStep(1+s.i,true); s.i++; if(s.i<4) s.aligned=false; ping();
+      }
+      if(s.i<4 && s.aligned) liveGoal(`旋轉 <b style="color:var(--hud)">${s.rot} / 4</b>・機頭保持 <b>${DIRS[s.i]}</b>,飛往 <b style="color:var(--accent)">${['西北 ↖','東北 ↗','東南 ↘','西南 ↙'][s.i]}</b>(偏差 ${hd.toFixed(0)}°)`);
     }
-    if(s.i>=4) return true;
+    if(s.i>=4){
+      // 第 4 次旋轉:回到西南角後,機頭轉回正前方並穩住 1 秒
+      const atSW=Math.hypot(drone.x+1,drone.y+1)<=0.6;
+      if(drone.z>0.4 && atSW && hd<=15) s.hold+=dt; else s.hold=0;
+      if(s.hold>=1){ s.rot=4; setStep(5,true); return true; }
+      liveGoal(`第 <b style="color:var(--accent)">4 / 4</b> 次旋轉:在西南角把機頭轉回 <b>前↑</b>(偏差 ${hd.toFixed(0)}°)・穩住 ${fmt1(Math.min(1,s.hold))} / 1.0 秒`);
+    }
   },
   draw(g){
     g.save(); g.strokeStyle='rgba(255,138,60,.4)'; g.lineWidth=lw(3); g.setLineDash([lw(10),lw(8)]);
@@ -734,7 +755,10 @@ const missions=[
       zoneRing(g,pts[k][0],pts[k][1],0.32, done?'rgba(79,227,163,.9)':cur?'#ff8a3c':'rgba(140,163,184,.35)');
       wText(g,pts[k][0],pts[k][1]+0.5,String(k+1), cur?'#ff8a3c':'#5c7186');
     }
-    if(s.i<4) headingRay(g, s.i*Math.PI/2, '#ff8a3c');
+    headingRay(g,(s.i<4?s.i:0)*Math.PI/2,'#ff8a3c');
+    if(s.i<4 && !s.aligned) wText(g,pts[s.i-1][0],pts[s.i-1][1]-0.5,'⟳ 原地轉 90°','#ff8a3c');
+    if(s.i>=4){ zoneRing(g,-1,-1,0.32,'#ff8a3c'); wText(g,-1,-1.5,'⟳ 轉回前↑','#ff8a3c'); }
+    wText(g,0,0,`旋轉 ${s.rot} / 4`,'rgba(140,163,184,.9)');
   }
 },
 {
@@ -867,46 +891,93 @@ const missions=[
   }
 },
 {
-  id:10, stage:2, name:'守門員移動與緊急斷電', skill:'快速垂直升降 ×3 + 落地 1 秒內斷電',
-  goal:'守在球門前的守備區內,在 0.5m 與 2m 之間快速來回升降 3 次,然後降落,並在觸地後 1 秒內按下「斷電」。',
-  keys:'升降全靠<b>左桿</b>,水平位置守住守備區。落地瞬間立刻按 <b>□(或 X)斷電</b>!',
-  coach:'<b>守門員的兩個本能。</b>垂直升降是封堵射門的走位;緊急斷電是安全的最後一道線——比賽裡失控 1 秒就是事故。把「落地→斷電」練成反射動作,教練才敢放你上場。',
-  par:42, wind:0.26,
-  steps:['進入守備區,升至 2m ↑','降至 0.5m ↓(第 1 次)','完成第 2 次來回','完成第 3 次來回','降落,1 秒內完成斷電 ⏻'],
-  st:{reps:0,dir:1,armed:false},
-  setup(){ this.st={reps:0,dir:1,armed:false}; drone.y=1.6; },
+  id:10, stage:2, name:'擋球守門小遊戲', skill:'守門走位擋球 ×5 + 落地 1 秒內斷電',
+  goal:'對手連續射門!守在球門前的守備區,左右走位+上下升降,用機身把紅色來球擋下。來球有高有低,你的高度要跟「球高」對上(±35cm)才擋得到。成功擋下 5 球後降落,並在觸地後 1 秒內按下「斷電」。被射進球門會記失誤。',
+  keys:'<b>右桿</b> 左右走位補位、<b>左桿</b> 升降對高度(右側高度尺會顯示來球高度帶)。先對高度、再對落點!落地瞬間立刻按 <b>□(或 X)斷電</b>!',
+  coach:'<b>守門員的三個本能。</b>① 眼睛先看「球高」再看落點——高度不對,位置再準也擋不到;② 擋下後不追球,立刻回中路準備下一球;③ 緊急斷電是安全的最後一道線——把「落地→斷電」練成反射動作,教練才敢放你上場。',
+  par:52, wind:0.26,
+  steps:['起飛,進入球門前守備區','擋下第 1 球','擋下第 2 球','擋下第 3 球','擋下第 4 球','擋下第 5 球','降落,1 秒內完成斷電 ⏻'],
+  st:{phase:0,blocks:0,shot:0,ball:null,cd:1.5},
+  setup(){ this.st={phase:0,blocks:0,shot:0,ball:null,cd:1.5}; drone.y=1.6; },
   update(dt){
     const s=this.st;
-    const inBox=Math.hypot(drone.x,drone.y-1.6)<=0.6;
-    if(drone.z>0.3) corridorCheck(dt,!inBox,'離開守備區!');
-    if(s.reps<3 && inBox){
-      if(s.dir===1 && drone.z>=1.9){ s.dir=-1; if(s.reps===0) setStep(0,true); ping(); }
-      else if(s.dir===-1 && drone.z<=0.6 && drone.z>0.1){ s.dir=1; s.reps++; setStep(s.reps,true); ping(); }
-    }
-    if(s.reps>=3){
-      s.armed=true;
-      if(touchdown.justLanded){ /* wait for cut */ }
+    const inBox=Math.abs(drone.x)<=1.1 && drone.y>=1.0 && drone.y<=2.3;
+    if(s.phase===0){
+      setStep(0, drone.z>0.5 && inBox);
+      if(drone.z>0.3) corridorCheck(dt,!inBox,'回到守備區!');
+      if(!s.ball){
+        if(drone.z>0.5) s.cd-=dt;
+        if(s.cd<=0 && drone.z>0.5){
+          const sx=Math.random()*3.2-1.6, tx=Math.random()*1.2-0.6;
+          const spd=1.1+Math.min(0.9,s.shot*0.15);   // 一球比一球快
+          const dx=tx-sx, dy=2.45-(-2.4), L=Math.hypot(dx,dy);
+          s.ball={x:sx,y:-2.4,z:0.6+Math.random()*1.2,vx:dx/L*spd,vy:dy/L*spd,live:true,tt:0};
+          s.shot++; ping(500);
+        }
+      } else {
+        const b=s.ball;
+        b.x+=b.vx*dt; b.y+=b.vy*dt; b.tt+=dt;
+        if(b.live){
+          const dh=Math.hypot(drone.x-b.x,drone.y-b.y), dz=Math.abs(drone.z-b.z);
+          if(drone.z>0.3 && drone.motors && dh<=0.38 && dz<=0.35){
+            // 擋下!球被彈回南場
+            b.live=false; b.tt=0;
+            const sp=Math.hypot(b.vx,b.vy);
+            b.vy=-sp*0.9; b.vx=(b.x-drone.x)*3;
+            s.blocks++; setStep(s.blocks,true); ping(1200);
+          } else if(b.y>=2.35){
+            if(Math.abs(b.x)<=0.85) addFault('被進球了!守住球門!');
+            s.ball=null; s.cd=1.4;
+          }
+        } else if(b.tt>2.5 || b.y<-2.7 || Math.abs(b.x)>2.7){
+          s.ball=null; s.cd=1.2;
+        }
+      }
+      if(s.blocks>=5){ s.phase=1; s.ball=null; ping(); }
+      const b2=s.ball;
+      if(b2&&b2.live){
+        const zOk=Math.abs(drone.z-b2.z)<=0.35;
+        liveGoal(`已擋 <b style="color:var(--hud)">${s.blocks} / 5</b>・來球球高 <b style="color:${zOk?'var(--hud)':'var(--warn)'}">${fmt1(b2.z)}m</b>|你的高度 ${fmt2(drone.z)}m`);
+      } else {
+        liveGoal(`已擋 <b style="color:var(--hud)">${s.blocks} / 5</b>・${drone.z>0.5?'守住中路,下一球即將發出…':'先起飛進入守備區'}`);
+      }
+    } else {
       if(drone.z<0.02 && !drone.motors){
         const dtc=cutAt-touchdown.t;
-        if(dtc>=0 && dtc<=1){ setStep(4,true); return true; }
+        if(dtc>=0 && dtc<=1){ setStep(6,true); return true; }
       }
       if(drone.z<0.02 && drone.motors && t-touchdown.t>1 && touchdown.t>0){
         addFault('斷電太慢(>1 秒)!重新起飛再降');
         touchdown.t=-9;
       }
-      liveGoal(`✅ 升降完成!<b style="color:var(--warn)">降落後 1 秒內按 X 斷電</b>`);
-    } else {
-      liveGoal(`升降 <b style="color:var(--hud)">${s.reps} / 3</b>・現在${s.dir===1?'升至 2.0m ↑':'降至 0.5m ↓'}・高度 ${fmt2(drone.z)}m`);
+      liveGoal(`🥅 成功擋下 5 球!<b style="color:var(--warn)">降落後 1 秒內按 X 斷電</b>`);
     }
   },
   draw(g){
-    // goal + box
+    // goal + defense box
     goalPosts(g,2.45);
     g.save(); g.strokeStyle='rgba(79,168,255,.5)'; g.lineWidth=lw(2); g.setLineDash([lw(6),lw(6)]);
-    g.beginPath(); g.arc(px(0),py(1.6),sc(0.6),0,TAU); g.stroke(); g.restore();
-    wText(g,0,0.75,'守備區','#4fa8ff');
+    g.strokeRect(px(-1.1),py(2.3),sc(2.2),sc(1.3)); g.restore();
+    wText(g,0,0.85,'守備區','#4fa8ff');
     padAt(g,0,1.6,0.001);
-    altBandMark(g,0.5,2.0,true);
+    const s=this.st, b=s.ball;
+    if(b){
+      if(b.live){
+        g.save(); g.strokeStyle='rgba(255,92,92,.35)'; g.lineWidth=lw(2); g.setLineDash([lw(5),lw(6)]);
+        g.beginPath(); g.moveTo(px(b.x),py(b.y)); g.lineTo(px(b.x+b.vx*2.2),py(b.y+b.vy*2.2)); g.stroke(); g.restore();
+      }
+      const zOk=Math.abs(drone.z-b.z)<=0.35;
+      g.save();
+      g.fillStyle=b.live?'#ff5c5c':'rgba(140,163,184,.55)';
+      g.beginPath(); g.arc(px(b.x),py(b.y),sc(0.1+b.z*0.02),0,TAU); g.fill();
+      if(b.live){ g.strokeStyle=zOk?'#4fe3a3':'#ff8a3c'; g.lineWidth=lw(2.5);
+        g.beginPath(); g.arc(px(b.x),py(b.y),sc(0.1+b.z*0.02)+lw(5),0,TAU); g.stroke(); }
+      g.restore();
+      if(b.live) wText(g,b.x,b.y-0.35,`球高 ${fmt1(b.z)}m`, zOk?'#4fe3a3':'#ff8a3c');
+    }
+    wText(g,0,0.45,`已擋 ${s.blocks} / 5`,'#8ca3b8');
+    if(b&&b.live) altBandMark(g,Math.max(0.1,b.z-0.35),b.z+0.35,true);
+    else altBandMark(g,0.5,2.0,true);
   }
 }
 ];
