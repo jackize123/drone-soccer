@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>星星大冒險|無人機 3D 遊戲</title>
+<style>
+:root{
+  --hud:#4fe3a3; --accent:#ff8a3c; --red:#ff5a6e; --gold:#ffd166; --line:#22304a;
+  --txt:#e8eef7; --dim:#8fa3bf;
+  --mono:Consolas,"Cascadia Mono",monospace;
+  --cjk:"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#0b1220;
+  font-family:var(--cjk);color:var(--txt);touch-action:none;overscroll-behavior:none}
+#c{position:fixed;inset:0;display:block}
+.topbar{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;gap:8px;
+  padding:10px 12px;flex-wrap:wrap;z-index:5}
+.pill{background:rgba(13,21,38,.85);border:1px solid var(--line);border-radius:999px;
+  padding:7px 13px;font-size:13px;color:var(--txt);text-decoration:none;line-height:1;
+  font-family:var(--cjk);cursor:pointer}
+a.pill:hover,button.pill:hover{border-color:var(--gold)}
+.title{font-weight:800;font-size:14px;cursor:default}
+.hudrow{position:fixed;top:54px;left:12px;display:flex;flex-direction:column;gap:6px;z-index:5;pointer-events:none}
+.stat{background:rgba(13,21,38,.85);border:1px solid var(--line);border-radius:10px;
+  padding:6px 12px;font-family:var(--mono);font-size:14px;min-width:130px}
+.stat b{color:var(--gold);font-weight:400}
+.combo{position:fixed;top:54px;right:12px;z-index:5;pointer-events:none;
+  background:rgba(13,21,38,.85);border:1px solid var(--accent);color:var(--accent);
+  border-radius:12px;padding:8px 16px;font-size:18px;font-weight:900;opacity:0;transition:.2s}
+.combo.show{opacity:1}
+.toast{position:fixed;top:22%;left:50%;transform:translateX(-50%);z-index:6;
+  background:rgba(13,21,38,.92);border:1px solid var(--gold);color:var(--gold);
+  border-radius:12px;padding:9px 20px;font-size:19px;font-weight:800;opacity:0;
+  transition:opacity .2s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.count{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  z-index:9;pointer-events:none;font-size:min(30vw,150px);font-weight:900;color:var(--gold);
+  text-shadow:0 0 40px rgba(255,209,102,.6);font-family:var(--mono)}
+.prog{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:5;
+  color:#ffeebf;font-size:14px;font-weight:700;text-align:center;pointer-events:none;
+  background:rgba(11,18,32,.78);border:1px solid rgba(255,209,102,.4);
+  padding:7px 18px;border-radius:999px;white-space:nowrap;max-width:94vw}
+.stick{position:fixed;bottom:26px;width:132px;height:132px;border-radius:50%;z-index:7;
+  background:rgba(13,21,38,.5);border:2px solid rgba(255,209,102,.4);display:none}
+.stick .nub{position:absolute;left:50%;top:50%;width:56px;height:56px;border-radius:50%;
+  background:rgba(255,209,102,.3);border:2px solid var(--gold);transform:translate(-50%,-50%)}
+.stick .tag{position:absolute;top:-22px;left:50%;transform:translateX(-50%);
+  font-size:11px;color:var(--dim);white-space:nowrap}
+#stickL{left:22px}#stickR{right:22px}
+body.touchmode .stick{display:block}
+.ovl{position:fixed;inset:0;z-index:10;background:rgba(7,11,20,.86);
+  display:flex;align-items:center;justify-content:center;padding:16px}
+.panel{background:#111927;border:1px solid var(--line);border-radius:18px;
+  padding:22px 24px;max-width:600px;width:100%;max-height:90vh;overflow:auto}
+.panel h1{margin:0 0 4px;font-size:22px}
+.panel h1 .em{color:var(--gold)}
+.panel p{color:var(--dim);font-size:13px;line-height:1.8;margin:8px 0}
+.panel .keys{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin:10px 0;font-size:12px}
+@media(max-width:520px){.panel .keys{grid-template-columns:1fr}}
+.panel .keys div{background:#0d1520;border:1px solid var(--line);border-radius:10px;padding:8px 10px;line-height:1.7}
+.panel .keys b{color:var(--gold);font-family:var(--mono);font-weight:400}
+.lvgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px;margin-top:12px}
+.lvbtn{display:flex;flex-direction:column;gap:3px;text-align:left;
+  background:#0d1520;border:1px solid var(--line);border-radius:14px;
+  padding:11px 13px;color:var(--txt);cursor:pointer;font-family:var(--cjk)}
+.lvbtn:hover:not(.lock){border-color:var(--gold);transform:translateY(-2px)}
+.lvbtn.lock{opacity:.45;cursor:not-allowed}
+.lvbtn .nm{font-size:13.5px;font-weight:800}
+.lvbtn .nm .no{color:var(--accent);font-family:var(--mono);margin-right:5px}
+.lvbtn .st{font-size:15px;letter-spacing:2px;color:var(--gold)}
+.lvbtn .st .off{color:#2c3d5e}
+.lvbtn .bs{font-size:11px;color:var(--dim);font-family:var(--mono)}
+.go{display:inline-block;background:var(--gold);color:#221803;border:0;
+  border-radius:12px;padding:12px 20px;font-size:15px;font-weight:800;cursor:pointer;
+  font-family:var(--cjk);margin:4px 6px 0 0}
+.go.alt{background:#1b2740;color:var(--txt);border:1px solid var(--line)}
+.bigstars{font-size:52px;letter-spacing:8px;color:var(--gold);margin:8px 0}
+.bigstars .off{color:#2c3d5e}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="topbar">
+  <a class="pill" href="index.html">← 首頁</a>
+  <span class="pill title">⭐ 星星大冒險</span>
+  <button class="pill" id="menuBtn">🗺 選關</button>
+  <button class="pill" id="camBtn">📷 跟隨</button>
+  <button class="pill" id="resetBtn">↺ 重玩</button>
+</div>
+<div class="hudrow">
+  <div class="stat">⭐ <b id="got">0</b> / <b id="tot">0</b></div>
+  <div class="stat">⏱ <b id="tim">0.0</b> s</div>
+</div>
+<div class="combo" id="combo"></div>
+<div class="toast" id="toast"></div>
+<div class="count" id="count"></div>
+<div class="prog" id="prog"></div>
+
+<div class="stick" id="stickL"><span class="tag">升降・旋轉</span><div class="nub"></div></div>
+<div class="stick" id="stickR"><span class="tag">前後・平移</span><div class="nub"></div></div>
+
+<div class="ovl" id="menu">
+  <div class="panel">
+    <h1>⭐ 星星大冒險 <span class="em">10 關</span></h1>
+    <p>開著無人機沿路線吃光所有星星!飛得越快星星評價越高(★★★)。連續快速收集會出現 <b style="color:var(--accent)">COMBO</b>!過關才能解鎖下一關。</p>
+    <div class="keys">
+      <div>⌨️ 鍵盤<br><b>W/S</b> 升降 <b>A/D</b> 旋轉<br><b>↑↓←→</b> 前後/平移</div>
+      <div>📱 觸控<br>左右虛擬搖桿<br>(和實機遙控器相同)</div>
+      <div>🎮 PS5 手把<br>雙搖桿同實機<br><b>OPTIONS</b> 重玩</div>
+    </div>
+    <div class="lvgrid" id="lvgrid"></div>
+  </div>
+</div>
+
+<div class="ovl hidden" id="done">
+  <div class="panel" style="text-align:center">
+    <h1 id="doneTitle">🎉 過關!</h1>
+    <div class="bigstars" id="doneStars">★★★</div>
+    <p style="font-size:24px;color:var(--gold);font-family:var(--mono);margin:6px 0" id="doneTime">--</p>
+    <p id="doneSub" style="font-size:13px"></p>
+    <div>
+      <button class="go" id="nextBtn">下一關 →</button>
+      <button class="go alt" id="againBtn">再玩一次</button>
+      <button class="go alt" id="backBtn">選關</button>
+    </div>
+  </div>
+</div>
+
+<script src="three.min.js"></script>
+<script>
+/* ================= renderer / scene ================= */
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(62,1,.1,140);
+scene.add(new THREE.HemisphereLight(0x9fc4ff,0x14100a,.95));
+const sun=new THREE.DirectionalLight(0xffffff,.5);sun.position.set(6,12,4);scene.add(sun);
+
+const floorMat=new THREE.MeshLambertMaterial({color:0x0d1520});
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(70,70),floorMat);
+floor.rotation.x=-Math.PI/2;scene.add(floor);
+const grid=new THREE.GridHelper(48,48,0x1e5c46,0x16263d);grid.position.y=.01;scene.add(grid);
+
+/* 背景星空 */
+{const g=new THREE.BufferGeometry();const n=260;const a=new Float32Array(n*3);
+ for(let i=0;i<n;i++){a[i*3]=(Math.random()*2-1)*34;a[i*3+1]=5+Math.random()*18;a[i*3+2]=(Math.random()*2-1)*34;}
+ g.setAttribute('position',new THREE.BufferAttribute(a,3));
+ scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xbfd4ee,size:.09,transparent:true,opacity:.8})));}
+
+/* ================= drone ================= */
+const drone=new THREE.Group();
+drone.add(new THREE.Mesh(new THREE.SphereGeometry(.5,14,9),
+  new THREE.MeshBasicMaterial({color:0x5aa7ff,wireframe:true,transparent:true,opacity:.55})));
+drone.add(new THREE.Mesh(new THREE.BoxGeometry(.36,.1,.36),
+  new THREE.MeshLambertMaterial({color:0x2c3d5e})));
+const nose=new THREE.Mesh(new THREE.ConeGeometry(.1,.24,10),
+  new THREE.MeshLambertMaterial({color:0xff8a3c}));
+nose.rotation.x=Math.PI/2;nose.position.set(0,.02,.36);drone.add(nose);
+const props=[];
+for(const[x,z]of[[-.2,-.2],[.2,-.2],[-.2,.2],[.2,.2]]){
+  const pr=new THREE.Mesh(new THREE.BoxGeometry(.3,.015,.05),
+    new THREE.MeshBasicMaterial({color:0xbfd4ee,transparent:true,opacity:.8}));
+  pr.position.set(x,.1,z);drone.add(pr);props.push(pr);
+}
+scene.add(drone);
+/* 尾跡 */
+const trail=[];
+for(let i=0;i<14;i++){
+  const t=new THREE.Mesh(new THREE.SphereGeometry(.08*(1-i/16),6,5),
+    new THREE.MeshBasicMaterial({color:0xffd166,transparent:true,opacity:.5*(1-i/14)}));
+  scene.add(t);trail.push(t);
+}
+
+/* ================= star / particles ================= */
+function starGeo(sc=1){
+  const s=new THREE.Shape();const R=.42*sc,r=.18*sc;
+  for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2;const rad=i%2?r:R;
+    const x=Math.cos(a)*rad,y=Math.sin(a)*rad;i?s.lineTo(x,y):s.moveTo(x,y);}
+  s.closePath();
+  return new THREE.ExtrudeGeometry(s,{depth:.12*sc,bevelEnabled:false});
+}
+const STARGEO=starGeo(),STARGEO_BIG=starGeo(2.2);
+const starMat=new THREE.MeshBasicMaterial({color:0xffd166});
+/* 粒子池 */
+const parts=[];
+for(let i=0;i<46;i++){
+  const p=new THREE.Mesh(new THREE.OctahedronGeometry(.09),
+    new THREE.MeshBasicMaterial({color:0xffd166,transparent:true,opacity:0}));
+  p._v=new THREE.Vector3();p._life=0;scene.add(p);parts.push(p);
+}
+function burst(x,y,z,n=10,col=0xffd166){
+  let c=0;
+  for(const p of parts){if(p._life>0)continue;
+    p.position.set(x,y,z);p.material.color.setHex(col);
+    p._v.set((Math.random()*2-1)*3,(Math.random()*2)*2.2,(Math.random()*2-1)*3);
+    p._life=.8;p.material.opacity=1;
+    if(++c>=n)break;}
+}
+function updateParts(dt){
+  for(const p of parts){if(p._life<=0)continue;
+    p._life-=dt;p._v.y-=6*dt;
+    p.position.addScaledVector(p._v,dt);
+    p.material.opacity=Math.max(0,p._life/.8);
+    p.rotation.x+=dt*6;p.rotation.z+=dt*5;
+    if(p._life<=0)p.material.opacity=0;}
+}
+
+/* ================= audio ================= */
+let AC;function tone(f,d=.1,v=.13,type='square'){try{
+  AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+  const o=AC.createOscillator(),g=AC.createGain();
+  o.type=type;o.frequency.value=f;o.connect(g);g.connect(AC.destination);
+  g.gain.setValueAtTime(v,AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);
+  o.start();o.stop(AC.currentTime+d);}catch(e){}}
+function fanfare(){[523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,.22,.15,'triangle'),i*130));}
+
+/* ================= helpers ================= */
+const levelGroup=new THREE.Group();scene.add(levelGroup);
+function pole(x,z,h=2.8,color=0xff8a3c){
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,h,10),
+    new THREE.MeshLambertMaterial({color}));
+  m.position.set(x,h/2,z);levelGroup.add(m);return m;}
+function gate(x,y,z,rotY=0,color=0x9b7bff){
+  const m=new THREE.Mesh(new THREE.TorusGeometry(1,.08,10,26),
+    new THREE.MeshBasicMaterial({color}));
+  m.position.set(x,y,z);m.rotation.y=rotY;levelGroup.add(m);return m;}
+function wall(x,y,z,w,h,d,color=0x33465f){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),
+    new THREE.MeshLambertMaterial({color}));
+  m.position.set(x,y,z);m._aabb={w,h,d};levelGroup.add(m);walls.push(m);return m;}
+let walls=[];
+
+/* ================= levels ================= */
+/* star: [x,y,z] 或 {p:[x,y,z],mv:{ax:'x'|'y',amp,sp,ph}} */
+function zig(n,x0,x1,z0,dz,y){const a=[];for(let i=0;i<n;i++)a.push([i%2?x1:x0,y,z0+i*dz]);return a;}
+const LEVELS=[
+ {name:'新手大道',desc:'沿直線吃 8 顆星,抓住油門和前進的感覺!',t3:14,t2:22,theme:{bg:0x0b1220,grid:0x1e5c46},
+  stars:Array.from({length:8},(_,i)=>[0,1.2,4+i*2])},
+ {name:'蛇行彎道',desc:'星星左右擺!練習平移與轉向的節奏',t3:20,t2:30,theme:{bg:0x0d1024,grid:0x2c3a6b},
+  stars:zig(9,-2,2,4,1.6,1.2)},
+ {name:'上上下下',desc:'高低起伏的星路,油門控制是關鍵',t3:22,t2:32,theme:{bg:0x081a18,grid:0x1e5c5c},
+  stars:Array.from({length:9},(_,i)=>[0,[0.8,2.0,2.8][i%3],4+i*1.6])},
+ {name:'迴旋星梯',desc:'繞著圓一圈往上爬!像走旋轉樓梯',t3:28,t2:40,theme:{bg:0x140f22,grid:0x4a3a7a},
+  stars:Array.from({length:10},(_,i)=>{const a=i*.63;
+    return[Math.sin(a)*3,0.8+i*.22,10-Math.cos(a)*3];})},
+ {name:'繞桿高手',desc:'S 型繞過橘色標桿,別撞桿!',t3:24,t2:34,theme:{bg:0x1a1208,grid:0x6b4a1e},
+  poles:[[0,6],[0,8.5],[0,11],[0,13.5]],
+  stars:zig(8,-1.7,1.7,4.8,1.45,1.2)},
+ {name:'星星拱門',desc:'每顆星都躲在拱門裡,對準了再穿過去!',t3:26,t2:38,theme:{bg:0x120a1e,grid:0x5c3a8a},
+  gates:[[0,1.2,5,0],[2.4,1.4,8,.5],[-2.4,1.6,10.5,-.5],[0,2.2,13,0],[2.2,1.2,15.5,.4],[-2,2,17.5,-.4]],
+  stars:[[0,1.2,5],[2.4,1.4,8],[-2.4,1.6,10.5],[0,2.2,13],[2.2,1.2,15.5],[-2,2,17.5]]},
+ {name:'8 字星路',desc:'經典 8 字!旋轉+平移一起用才滑順',t3:30,t2:44,theme:{bg:0x0a1420,grid:0x1e4a6b},
+  poles:[[1.8,9],[-1.8,9]],
+  stars:[[0,1.2,9],[1.8,1.2,7.4],[3.4,1.2,9],[1.8,1.2,10.6],[0,1.2,9.2],[-1.8,1.2,10.6],[-3.4,1.2,9],[-1.8,1.2,7.4],[0,1.4,9]]},
+ {name:'淘氣流星',desc:'星星會飄來飄去!抓準時機出手',t3:34,t2:50,theme:{bg:0x1a0a14,grid:0x8a3a5c},
+  stars:[{p:[0,1.4,5],mv:{ax:'x',amp:1.4,sp:1.6,ph:0}},{p:[2,1.2,7.5],mv:{ax:'y',amp:.9,sp:2,ph:1}},
+    {p:[-2,1.6,9],mv:{ax:'y',amp:1,sp:1.7,ph:2}},{p:[0,2,11],mv:{ax:'x',amp:2,sp:1.3,ph:3}},
+    {p:[2.2,1.2,13],mv:{ax:'x',amp:1.2,sp:2.1,ph:4}},{p:[-2.2,1.8,14.5],mv:{ax:'y',amp:1,sp:1.5,ph:5}},
+    {p:[0,1.4,16.5],mv:{ax:'x',amp:2.4,sp:1.8,ph:6}},{p:[0,2.6,18],mv:{ax:'y',amp:.8,sp:2.4,ph:7}}]},
+ {name:'星星迷宮',desc:'穿過三道牆的缺口!撞牆會被彈開',t3:34,t2:50,theme:{bg:0x101418,grid:0x3a4a5c},
+  walls:[[1.5,1.25,7,4.5,2.5,.4],[-1.5,1.25,10.5,4.5,2.5,.4],[0,.9,14,6,1.8,.4]],
+  stars:[[0,1.2,4.5],[-2.2,1.2,7],[-2.2,1.2,8.8],[1.8,1.4,10.5],[1.8,1.2,12.3],[0,2.6,14],[0,1.4,15.8],[1.5,1.8,17.2],[-1.5,1.8,17.2]]},
+ {name:'銀河大冒險',desc:'最終關!直線、爬升、繞桿、拱門全部來一遍,終點有超大星星!',t3:52,t2:75,theme:{bg:0x0f0a1e,grid:0x5c4a9b},
+  poles:[[0,10],[0,12]],
+  gates:[[0,1.6,14.8,0],[0,2.2,16.2,0]],
+  stars:[[0,1.2,3],[0,1.2,5],[0,1.4,7],
+    [2,1.9,8.5],[2.6,2.5,10.5],[1.4,2.9,12.3],
+    [-1.6,1.2,9.5],[-1.6,1.2,11.5],[-1.6,1.5,13],
+    [0,1.6,14.8],[0,2.2,16.2],
+    {p:[0,2.6,18],big:true}]},
+];
+
+/* ================= state ================= */
+const pos=new THREE.Vector3(0,.15,1), vel=new THREE.Vector3();
+let yaw=0,camMode=0,locked=true,curLv=0,stars=[],got=0,t0=0,doneFlag=false,cdToken=0;
+let combo=0,comboT=0;
+const $=id=>document.getElementById(id);
+const alt=()=>pos.y-.15;
+function toast(msg,ms=1200){const t=$('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),ms);}
+const save=JSON.parse(localStorage.getItem('droneStarsSave')||'{}');
+function rateOf(lv,t){return t<=LEVELS[lv].t3?3:t<=LEVELS[lv].t2?2:1;}
+function starsStr(n){return '★'.repeat(n)+'<span class="off">'+'★'.repeat(3-n)+'</span>';}
+const PRAISE=['太棒了!','漂亮!','神操作!','超順的!','就是這樣!','高手!'];
+
+/* ================= input(同實機配置) ================= */
+const keys={};
+addEventListener('keydown',e=>{keys[e.code]=1;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();});
+addEventListener('keyup',e=>{keys[e.code]=0});
+function makeStick(el){
+  const st={x:0,y:0,id:null},nub=el.querySelector('.nub');
+  function mv(e){const r=el.getBoundingClientRect();
+    let dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);
+    const m=r.width/2-20,l=Math.hypot(dx,dy);
+    if(l>m){dx*=m/l;dy*=m/l}
+    st.x=dx/m;st.y=dy/m;
+    nub.style.transform=`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))`;}
+  el.addEventListener('pointerdown',e=>{st.id=e.pointerId;el.setPointerCapture(e.pointerId);mv(e)});
+  el.addEventListener('pointermove',e=>{if(e.pointerId===st.id)mv(e)});
+  const end=e=>{if(e.pointerId===st.id){st.id=null;st.x=0;st.y=0;nub.style.transform='translate(-50%,-50%)'}};
+  el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);
+  return st;
+}
+const tL=makeStick($('stickL')),tR=makeStick($('stickR'));
+if('ontouchstart' in window)document.body.classList.add('touchmode');
+const dz=v=>Math.abs(v)<.13?0:v;
+function readInput(){
+  if(locked)return{thr:0,yaw:0,pit:0,rol:0};
+  let thr=(keys.KeyW?1:0)-(keys.KeyS?1:0);
+  let yawIn=(keys.KeyD?1:0)-(keys.KeyA?1:0);
+  let pit=(keys.ArrowUp?1:0)-(keys.ArrowDown?1:0);
+  let rol=(keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0);
+  thr+=-tL.y;yawIn+=tL.x;pit+=-tR.y;rol+=tR.x;
+  const gps=navigator.getGamepads?navigator.getGamepads():[];
+  for(const gp of gps){if(!gp)continue;
+    thr+=-dz(gp.axes[1]||0);yawIn+=dz(gp.axes[0]||0);
+    pit+=-dz(gp.axes[3]||0);rol+=dz(gp.axes[2]||0);
+    if(gp.buttons[9]&&gp.buttons[9].pressed&&!gp._b9){gp._b9=1;loadLevel(curLv);}
+    if(gp.buttons[9]&&!gp.buttons[9].pressed)gp._b9=0;
+  }
+  const c=v=>Math.max(-1,Math.min(1,v));
+  return{thr:c(thr),yaw:c(yawIn),pit:c(pit),rol:c(rol)};
+}
+
+/* ================= physics ================= */
+const MAXH=3.6,MAXV=2.7,YAWRATE=2.7;
+const fwd=new THREE.Vector3(),right=new THREE.Vector3(),tmp=new THREE.Vector3();
+function physStep(dt,inp){
+  yaw-=inp.yaw*YAWRATE*dt;
+  fwd.set(Math.sin(yaw),0,Math.cos(yaw));
+  right.set(-Math.cos(yaw),0,Math.sin(yaw)); /* 螢幕右=-X */
+  tmp.copy(fwd).multiplyScalar(inp.pit*MAXH).addScaledVector(right,inp.rol*MAXH);
+  vel.x+=(tmp.x-vel.x)*Math.min(1,4*dt);
+  vel.z+=(tmp.z-vel.z)*Math.min(1,4*dt);
+  vel.y+=((inp.thr*MAXV)-vel.y)*Math.min(1,4.5*dt);
+  pos.addScaledVector(vel,dt);
+  pos.x=Math.max(-6.5,Math.min(6.5,pos.x));
+  pos.z=Math.max(-1.5,Math.min(20,pos.z));
+  pos.y=Math.max(.15,Math.min(7,pos.y));
+  /* 撞牆彈開 */
+  for(const w of walls){
+    const hw=w._aabb.w/2+.42,hh=w._aabb.h/2+.42,hd=w._aabb.d/2+.42;
+    const dx=pos.x-w.position.x,dy=pos.y-w.position.y,dzz=pos.z-w.position.z;
+    if(Math.abs(dx)<hw&&Math.abs(dy)<hh&&Math.abs(dzz)<hd){
+      const px=hw-Math.abs(dx),py=hh-Math.abs(dy),pz=hd-Math.abs(dzz);
+      if(px<py&&px<pz){pos.x=w.position.x+Math.sign(dx)*hw;vel.x=Math.sign(dx)*Math.abs(vel.x)*.5;}
+      else if(py<pz){pos.y=w.position.y+Math.sign(dy)*hh;vel.y=Math.sign(dy)*Math.abs(vel.y)*.5;}
+      else{pos.z=w.position.z+Math.sign(dzz)*hd;vel.z=Math.sign(dzz)*Math.abs(vel.z)*.5;}
+      tone(150,.09,.1,'sawtooth');
+    }
+  }
+  drone.position.copy(pos);
+  drone.rotation.set(0,yaw,0);
+  drone.rotateX(inp.pit*.28);drone.rotateZ(inp.rol*.28);
+  props.forEach((p,i)=>p.rotation.y+=(i%2?1:-1)*(.6+Math.abs(inp.thr)*.5));
+  /* 尾跡 */
+  trail[0].position.lerp(pos,.8);
+  for(let i=trail.length-1;i>0;i--)trail[i].position.lerp(trail[i-1].position,.42);
+}
+
+/* ================= level flow ================= */
+function loadLevel(i){
+  curLv=i;doneFlag=false;got=0;t0=0;combo=0;comboT=0;locked=true;
+  walls=[];
+  while(levelGroup.children.length)levelGroup.remove(levelGroup.children[0]);
+  const L=LEVELS[i];
+  scene.background=new THREE.Color(L.theme.bg);
+  scene.fog=new THREE.Fog(L.theme.bg,18,48);
+  grid.material.color.setHex(L.theme.grid);
+  if(L.poles)L.poles.forEach(([x,z])=>pole(x,z));
+  if(L.gates)L.gates.forEach(([x,y,z,r])=>gate(x,y,z,r));
+  if(L.walls)L.walls.forEach(([x,y,z,w,h,d])=>wall(x,y,z,w,h,d));
+  stars=L.stars.map(s=>{
+    const isObj=!Array.isArray(s);
+    const p=isObj?s.p:s;
+    const m=new THREE.Mesh(isObj&&s.big?STARGEO_BIG:STARGEO,starMat.clone());
+    m.position.set(p[0],p[1],p[2]);
+    m._base=new THREE.Vector3(p[0],p[1],p[2]);
+    m._mv=isObj?s.mv:null;m._got=false;m._big=isObj&&!!s.big;
+    levelGroup.add(m);return m;});
+  $('tot').textContent=stars.length;$('got').textContent='0';$('tim').textContent='0.0';
+  pos.set(0,.15,1);vel.set(0,0,0);yaw=0;
+  fwd.set(0,0,1);
+  camera.position.set(0,2.4,-3.6);camera.lookAt(0,1,3);
+  trail.forEach(t=>t.position.copy(pos));
+  $('prog').textContent=`第 ${i+1} 關|${L.name} — ${L.desc}`;
+  $('menu').classList.add('hidden');$('done').classList.add('hidden');
+  /* 倒數(token 防止重玩時舊倒數亂入) */
+  const my=++cdToken;
+  const c=$('count');const seq=['3','2','1','GO!'];
+  seq.forEach((s,k)=>setTimeout(()=>{
+    if(my!==cdToken)return;
+    c.textContent=s;tone(k===3?880:440,.15,.15,'triangle');
+    if(k===3){locked=false;t0=performance.now();
+      setTimeout(()=>{if(my===cdToken)c.textContent='';},600);}
+  },400+k*650));
+}
+function elapsed(){return t0?(performance.now()-t0)/1000:0;}
+function collectCheck(dt){
+  if(doneFlag||locked)return;
+  const now=performance.now()/1000;
+  comboT-=dt;if(comboT<=0)combo=0;
+  for(const s of stars){
+    if(s._got)continue;
+    if(s._mv){const off=Math.sin(now*s._mv.sp+s._mv.ph)*s._mv.amp;
+      if(s._mv.ax==='x')s.position.x=s._base.x+off;
+      else s.position.y=Math.max(.5,s._base.y+off);}
+    s.rotation.y+=dt*2.2;
+    s.position.y+=Math.sin(now*2+s._base.x)*dt*.12;
+    if(pos.distanceTo(s.position)<(s._big?1.3:.78)){
+      s._got=true;s.visible=false;got++;
+      $('got').textContent=got;
+      burst(s.position.x,s.position.y,s.position.z,s._big?22:10);
+      combo++;comboT=3;
+      tone(520+Math.min(combo,8)*70,.12,.14,'triangle');
+      if(combo>=2){const cb=$('combo');
+        cb.textContent=`COMBO x${combo} ${PRAISE[Math.min(combo-2,PRAISE.length-1)]}`;
+        cb.classList.add('show');clearTimeout(cb._h);
+        cb._h=setTimeout(()=>cb.classList.remove('show'),1400);}
+      if(got===stars.length)clear();
+    }
+  }
+}
+function clear(){
+  doneFlag=true;locked=true;
+  const t=elapsed(),r=rateOf(curLv,t);
+  const old=save[curLv];
+  if(!old||r>old.s||(r===old.s&&t<old.t)){save[curLv]={s:r,t:+t.toFixed(1)};
+    localStorage.setItem('droneStarsSave',JSON.stringify(save));}
+  fanfare();
+  for(let k=0;k<3;k++)setTimeout(()=>burst(pos.x+(Math.random()*2-1),pos.y+1.2,pos.z,16,[0xffd166,0xff8a3c,0x4fe3a3][k]),k*250);
+  $('doneTitle').textContent=`🎉 第 ${curLv+1} 關 ${LEVELS[curLv].name} 過關!`;
+  $('doneStars').innerHTML=starsStr(r);
+  $('doneTime').textContent=t.toFixed(1)+' 秒';
+  $('doneSub').textContent=r===3?'滿星!你是星星獵人!':
+    `再快一點就有更多星:★★★ ≤ ${LEVELS[curLv].t3}s|★★ ≤ ${LEVELS[curLv].t2}s`;
+  $('nextBtn').style.display=curLv<9?'':'none';
+  setTimeout(()=>$('done').classList.remove('hidden'),900);
+}
+function buildMenu(){
+  const g=$('lvgrid');g.innerHTML='';
+  LEVELS.forEach((L,i)=>{
+    const unlocked=i===0||save[i-1];
+    const b=document.createElement('button');
+    b.className='lvbtn'+(unlocked?'':' lock');
+    const st=save[i]?starsStr(save[i].s):starsStr(0);
+    const bs=save[i]?`最佳 ${save[i].t}s`:(unlocked?'尚未過關':'先過上一關解鎖');
+    b.innerHTML=`<span class="nm">${unlocked?'<span class="no">'+(i+1)+'</span>':'🔒'}${L.name}</span>
+      <span class="st">${st}</span><span class="bs">${bs}</span>`;
+    if(unlocked)b.onclick=()=>{tone(700,.07);loadLevel(i);};
+    g.appendChild(b);
+  });
+}
+$('menuBtn').onclick=()=>{buildMenu();$('menu').classList.remove('hidden');};
+$('resetBtn').onclick=()=>loadLevel(curLv);
+$('againBtn').onclick=()=>loadLevel(curLv);
+$('backBtn').onclick=()=>{$('done').classList.add('hidden');buildMenu();$('menu').classList.remove('hidden');};
+$('nextBtn').onclick=()=>loadLevel(Math.min(9,curLv+1));
+$('camBtn').onclick=()=>{camMode=(camMode+1)%2;
+  $('camBtn').textContent=camMode?'📷 俯瞰':'📷 跟隨';};
+addEventListener('gamepadconnected',()=>toast('🎮 手把已連線',1800));
+
+/* ================= main loop ================= */
+function resize(){renderer.setSize(innerWidth,innerHeight,false);
+  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}
+addEventListener('resize',resize);resize();
+buildMenu();loadLevel(0);$('menu').classList.remove('hidden');
+let lastT=performance.now();
+renderer.setAnimationLoop(()=>{
+  const now=performance.now();
+  const dt=Math.min(.05,(now-lastT)/1000);lastT=now;
+  const inp=readInput();
+  physStep(dt,inp);
+  collectCheck(dt);
+  updateParts(dt);
+  if(camMode===0){
+    tmp.set(pos.x-fwd.x*4.6,pos.y+2.1,pos.z-fwd.z*4.6);
+    camera.position.lerp(tmp,Math.min(1,5*dt));
+    camera.lookAt(pos.x,pos.y+.4,pos.z);
+  }else{
+    tmp.set(pos.x*.4,15,pos.z*.55+4);
+    camera.position.lerp(tmp,Math.min(1,4*dt));
+    camera.lookAt(pos.x,0,pos.z);
+  }
+  if(t0&&!doneFlag)$('tim').textContent=elapsed().toFixed(1);
+  renderer.render(scene,camera);
+});
+</script>
+</body>
+</html>
