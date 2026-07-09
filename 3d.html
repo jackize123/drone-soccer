@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>3D 立體訓練場|無人機足球</title>
+<style>
+:root{
+  --hud:#4fe3a3; --accent:#ff8a3c; --red:#ff5a6e; --line:#22304a;
+  --txt:#e8eef7; --dim:#8fa3bf;
+  --mono:Consolas,"Cascadia Mono",monospace;
+  --cjk:"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#0b1220;
+  font-family:var(--cjk);color:var(--txt);touch-action:none;overscroll-behavior:none}
+#c{position:fixed;inset:0;display:block}
+.hud{position:fixed;z-index:5;pointer-events:none}
+.topbar{top:0;left:0;right:0;display:flex;align-items:center;gap:10px;padding:10px 14px;flex-wrap:wrap}
+.topbar a,.topbar button{pointer-events:auto}
+.pill{background:rgba(13,21,38,.82);border:1px solid var(--line);border-radius:999px;
+  padding:7px 14px;font-size:13px;color:var(--txt);text-decoration:none;line-height:1}
+a.pill:hover,button.pill:hover{border-color:var(--hud)}
+button.pill{font-family:var(--cjk);cursor:pointer}
+.title{font-weight:800;font-size:14px;letter-spacing:1px}
+.title small{color:var(--hud);font-family:var(--mono);letter-spacing:2px;font-weight:400;margin-left:8px}
+.stats{position:fixed;top:56px;left:14px;display:flex;flex-direction:column;gap:6px;z-index:5;pointer-events:none}
+.stat{background:rgba(13,21,38,.82);border:1px solid var(--line);border-radius:10px;
+  padding:6px 12px;font-family:var(--mono);font-size:13px;min-width:132px}
+.stat b{color:var(--hud);font-weight:400}
+.stat.acc b{color:var(--accent)}
+.toast{position:fixed;top:22%;left:50%;transform:translateX(-50%);z-index:6;
+  background:rgba(13,21,38,.9);border:1px solid var(--hud);color:var(--hud);
+  border-radius:12px;padding:10px 22px;font-size:20px;font-weight:800;opacity:0;
+  transition:opacity .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.hint{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:5;
+  color:var(--dim);font-size:12px;text-align:center;pointer-events:none;
+  background:rgba(11,18,32,.7);padding:5px 14px;border-radius:999px;white-space:nowrap}
+/* virtual sticks */
+.stick{position:fixed;bottom:26px;width:132px;height:132px;border-radius:50%;z-index:7;
+  background:rgba(13,21,38,.5);border:2px solid rgba(79,227,163,.35);display:none}
+.stick .nub{position:absolute;left:50%;top:50%;width:56px;height:56px;border-radius:50%;
+  background:rgba(79,227,163,.3);border:2px solid var(--hud);transform:translate(-50%,-50%)}
+.stick .tag{position:absolute;top:-22px;left:50%;transform:translateX(-50%);
+  font-size:11px;color:var(--dim);white-space:nowrap}
+#stickL{left:22px}
+#stickR{right:22px}
+body.touchmode .stick{display:block}
+/* intro overlay */
+.ovl{position:fixed;inset:0;z-index:10;background:rgba(7,11,20,.82);
+  display:flex;align-items:center;justify-content:center;padding:20px}
+.panel{background:#111927;border:1px solid var(--line);border-radius:16px;
+  padding:26px 28px;max-width:520px;width:100%;max-height:88vh;overflow:auto}
+.panel h1{margin:0 0 6px;font-size:22px}
+.panel h1 .em{color:var(--accent)}
+.panel p{color:var(--dim);font-size:13.5px;line-height:1.85;margin:10px 0}
+.panel .keys{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0;font-size:13px}
+.panel .keys div{background:#0d1520;border:1px solid var(--line);border-radius:10px;padding:9px 12px;line-height:1.7}
+.panel .keys b{color:var(--hud);font-family:var(--mono);font-weight:400}
+.go{display:block;width:100%;margin-top:14px;background:var(--hud);color:#06251a;border:0;
+  border-radius:12px;padding:14px;font-size:17px;font-weight:800;cursor:pointer;font-family:var(--cjk)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="hud topbar">
+  <a class="pill" href="index.html">← 首頁</a>
+  <span class="pill title">🧊 3D 立體訓練場<small>DRONE SOCCER 3D</small></span>
+  <button class="pill" id="camBtn">📷 視角:跟隨</button>
+  <button class="pill" id="resetBtn">↺ 重置</button>
+</div>
+<div class="stats">
+  <div class="stat">高度 <b id="alt">0.0</b> m</div>
+  <div class="stat">速度 <b id="spd">0.0</b> m/s</div>
+  <div class="stat acc">穿環 <b id="ring">0</b>/10</div>
+  <div class="stat acc">時間 <b id="tim">0.0</b> s</div>
+  <div class="stat">進球 <b id="goal">0</b></div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="hint" id="hint">左桿:升降+旋轉|右桿:前後+平移(和實機遙控器相同)</div>
+
+<div class="stick" id="stickL"><span class="tag">升降・旋轉</span><div class="nub"></div></div>
+<div class="stick" id="stickR"><span class="tag">前後・平移</span><div class="nub"></div></div>
+
+<div class="ovl" id="intro">
+  <div class="panel">
+    <h1>🧊 3D 立體訓練場 <span class="em">搶先版</span></h1>
+    <p>把 2D 訓練場變成立體飛行!鏡頭跟在你的無人機後面,操作方式和實機遙控器(美國手)完全相同。<b style="color:var(--hud)">依序穿過 10 個發光圓環</b>計時挑戰,再把白球<b style="color:var(--accent)">撞進球門</b>練射門。</p>
+    <div class="keys">
+      <div>⌨️ 鍵盤<br><b>W/S</b> 升降・<b>A/D</b> 旋轉<br><b>↑/↓</b> 前後・<b>←/→</b> 平移</div>
+      <div>📱 觸控<br>畫面左右兩顆虛擬搖桿<br>配置與實機相同</div>
+      <div>🎮 PS5 手把<br>左搖桿 升降+旋轉<br>右搖桿 前後+平移</div>
+      <div>🎯 玩法<br>橘環=下一個目標<br>穿完 10 環看完賽時間</div>
+    </div>
+    <button class="go" id="startBtn">起飛!</button>
+  </div>
+</div>
+
+<div class="ovl hidden" id="done">
+  <div class="panel" style="text-align:center">
+    <h1>🏁 穿環完賽!</h1>
+    <p style="font-size:30px;color:var(--hud);font-family:var(--mono);margin:16px 0" id="doneTime">--</p>
+    <p>繼續自由飛行練射門,或再挑戰一次更快的時間!</p>
+    <button class="go" id="againBtn">再挑戰一次</button>
+  </div>
+</div>
+
+<script src="three.min.js"></script>
+<script>
+/* ================= scene ================= */
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0b1220);
+scene.fog=new THREE.Fog(0x0b1220,18,46);
+const camera=new THREE.PerspectiveCamera(62,1,.1,120);
+scene.add(new THREE.HemisphereLight(0x9fc4ff,0x0c1a12,.95));
+const sun=new THREE.DirectionalLight(0xffffff,.55);sun.position.set(6,12,4);scene.add(sun);
+
+/* floor + arena */
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(60,60),
+  new THREE.MeshLambertMaterial({color:0x0d1520}));
+floor.rotation.x=-Math.PI/2;scene.add(floor);
+const grid=new THREE.GridHelper(44,44,0x1e5c46,0x16263d);
+grid.position.y=.01;scene.add(grid);
+/* side walls (visual posts) */
+const postMat=new THREE.MeshLambertMaterial({color:0x22304a});
+for(let z=-2;z<=20;z+=4){for(const x of[-6,6]){
+  const p=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,2.4,8),postMat);
+  p.position.set(x,1.2,z);scene.add(p);
+}}
+/* start pad */
+const pad=new THREE.Mesh(new THREE.CircleGeometry(1,32),
+  new THREE.MeshBasicMaterial({color:0x1c4433}));
+pad.rotation.x=-Math.PI/2;pad.position.set(0,.02,0);scene.add(pad);
+const padRing=new THREE.Mesh(new THREE.RingGeometry(.85,1,32),
+  new THREE.MeshBasicMaterial({color:0x4fe3a3,side:THREE.DoubleSide}));
+padRing.rotation.x=-Math.PI/2;padRing.position.set(0,.03,0);scene.add(padRing);
+
+/* ================= drone ================= */
+const drone=new THREE.Group();
+const cage=new THREE.Mesh(new THREE.SphereGeometry(.5,14,9),
+  new THREE.MeshBasicMaterial({color:0x5aa7ff,wireframe:true,transparent:true,opacity:.55}));
+drone.add(cage);
+drone.add(new THREE.Mesh(new THREE.BoxGeometry(.36,.1,.36),
+  new THREE.MeshLambertMaterial({color:0x2c3d5e})));
+const nose=new THREE.Mesh(new THREE.ConeGeometry(.1,.24,10),
+  new THREE.MeshLambertMaterial({color:0xff8a3c}));
+nose.rotation.x=Math.PI/2;nose.position.set(0,.02,.36);drone.add(nose);
+const props=[];
+for(const[x,z]of[[-.2,-.2],[.2,-.2],[-.2,.2],[.2,.2]]){
+  const pr=new THREE.Mesh(new THREE.BoxGeometry(.3,.015,.05),
+    new THREE.MeshBasicMaterial({color:0xbfd4ee,transparent:true,opacity:.8}));
+  pr.position.set(x,.1,z);drone.add(pr);props.push(pr);
+}
+scene.add(drone);
+
+/* ================= rings course ================= */
+const RING_POS=[[0,1.2,4],[2.5,1.6,7],[4.5,2.2,10],[3,2.7,13],[0,2.3,15.5],
+  [-3,1.9,13.5],[-4.6,1.5,10],[-3,1.2,7],[-1.2,1.7,5],[0,2.1,9.5]];
+const COL={next:0xff8a3c,todo:0x44608c,done:0x4fe3a3};
+const rings=RING_POS.map(([x,y,z],i)=>{
+  const m=new THREE.Mesh(new THREE.TorusGeometry(.85,.07,10,26),
+    new THREE.MeshBasicMaterial({color:COL.todo}));
+  m.position.set(x,y,z);
+  if(i%3===1)m.rotation.y=.6; if(i%3===2)m.rotation.y=-.6;
+  scene.add(m);return m;
+});
+
+/* ================= goal + ball ================= */
+const goalMat=new THREE.MeshLambertMaterial({color:0xd7e1f0});
+function bar(w,h,d,x,y,z){const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),goalMat);
+  b.position.set(x,y,z);scene.add(b);return b}
+bar(.1,1.9,.1,-2,.95,18.4); bar(.1,1.9,.1,2,.95,18.4); bar(4.1,.1,.1,0,1.9,18.4);
+const net=new THREE.Mesh(new THREE.PlaneGeometry(4,1.9),
+  new THREE.MeshBasicMaterial({color:0x4fe3a3,transparent:true,opacity:.12,side:THREE.DoubleSide}));
+net.position.set(0,.95,18.9);scene.add(net);
+const ball=new THREE.Mesh(new THREE.SphereGeometry(.35,18,14),
+  new THREE.MeshLambertMaterial({color:0xffffff}));
+const ballDots=new THREE.Mesh(new THREE.SphereGeometry(.355,8,6),
+  new THREE.MeshBasicMaterial({color:0x0b1220,wireframe:true,transparent:true,opacity:.5}));
+ball.add(ballDots);scene.add(ball);
+const BALL_START=new THREE.Vector3(0,.35,15);
+const bv=new THREE.Vector3();
+
+/* ================= state ================= */
+const pos=new THREE.Vector3(0,.15,0), vel=new THREE.Vector3();
+let yaw=0, ringIdx=0, ringT0=0, ringTime=0, goals=0, camMode=0, flying=false;
+const $=id=>document.getElementById(id);
+function toast(msg,ms=1400){const t=$('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),ms);}
+let AC;function beep(f=880,d=.09,v=.14){try{
+  AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+  const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=f;
+  o.connect(g);g.connect(AC.destination);
+  g.gain.setValueAtTime(v,AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);
+  o.start();o.stop(AC.currentTime+d);}catch(e){}}
+function paintRings(){rings.forEach((r,i)=>r.material.color.setHex(
+  i<ringIdx?COL.done:i===ringIdx?COL.next:COL.todo));}
+function resetCourse(){ringIdx=0;ringT0=0;ringTime=0;paintRings();$('ring').textContent='0';$('tim').textContent='0.0';}
+function resetAll(){pos.set(0,.15,0);vel.set(0,0,0);yaw=0;flying=false;
+  ball.position.copy(BALL_START);bv.set(0,0,0);resetCourse();toast('已重置');}
+paintRings();ball.position.copy(BALL_START);
+
+/* ================= input ================= */
+const keys={};
+addEventListener('keydown',e=>{keys[e.code]=1;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();});
+addEventListener('keyup',e=>{keys[e.code]=0});
+function makeStick(el){
+  const st={x:0,y:0,id:null},nub=el.querySelector('.nub');
+  function mv(e){const r=el.getBoundingClientRect();
+    let dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);
+    const m=r.width/2-20,l=Math.hypot(dx,dy);
+    if(l>m){dx*=m/l;dy*=m/l}
+    st.x=dx/m;st.y=dy/m;
+    nub.style.transform=`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))`;}
+  el.addEventListener('pointerdown',e=>{st.id=e.pointerId;el.setPointerCapture(e.pointerId);mv(e)});
+  el.addEventListener('pointermove',e=>{if(e.pointerId===st.id)mv(e)});
+  const end=e=>{if(e.pointerId===st.id){st.id=null;st.x=0;st.y=0;nub.style.transform='translate(-50%,-50%)'}};
+  el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);
+  return st;
+}
+const tL=makeStick($('stickL')),tR=makeStick($('stickR'));
+if('ontouchstart' in window)document.body.classList.add('touchmode');
+const dz=v=>Math.abs(v)<.13?0:v;
+function readInput(){
+  let thr=(keys.KeyW?1:0)-(keys.KeyS?1:0);
+  let yawIn=(keys.KeyD?1:0)-(keys.KeyA?1:0);
+  let pit=(keys.ArrowUp?1:0)-(keys.ArrowDown?1:0);
+  let rol=(keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0);
+  thr+= -tL.y; yawIn+= tL.x; pit+= -tR.y; rol+= tR.x;
+  const gps=navigator.getGamepads?navigator.getGamepads():[];
+  for(const gp of gps){if(!gp)continue;
+    thr+=-dz(gp.axes[1]||0); yawIn+=dz(gp.axes[0]||0);
+    pit+=-dz(gp.axes[3]||0); rol+=dz(gp.axes[2]||0);
+    if(gp.buttons[9]&&gp.buttons[9].pressed&&!gp._opt){gp._opt=1;resetAll()}
+    if(gp.buttons[9]&&!gp.buttons[9].pressed)gp._opt=0;
+  }
+  const c=v=>Math.max(-1,Math.min(1,v));
+  return{thr:c(thr),yaw:c(yawIn),pit:c(pit),rol:c(rol)};
+}
+
+/* ================= physics + game ================= */
+const MAXH=3.4, MAXV=2.6, YAWRATE=2.6;
+const fwd=new THREE.Vector3(), right=new THREE.Vector3(), tmp=new THREE.Vector3();
+function step(dt){
+  const inp=readInput();
+  yaw-=inp.yaw*YAWRATE*dt;
+  fwd.set(Math.sin(yaw),0,Math.cos(yaw));
+  right.set(Math.cos(yaw),0,-Math.sin(yaw));
+  /* velocity-target control = 定高輔助手感 */
+  tmp.copy(fwd).multiplyScalar(inp.pit*MAXH).addScaledVector(right,inp.rol*MAXH);
+  vel.x+=(tmp.x-vel.x)*Math.min(1,4*dt);
+  vel.z+=(tmp.z-vel.z)*Math.min(1,4*dt);
+  vel.y+=((inp.thr*MAXV)-vel.y)*Math.min(1,4.5*dt);
+  pos.addScaledVector(vel,dt);
+  if(!flying&&pos.y>.3){flying=true;if(ringT0===0&&ringIdx===0){ringT0=performance.now();}}
+  /* bounds */
+  pos.x=Math.max(-5.7,Math.min(5.7,pos.x));
+  pos.z=Math.max(-1.5,Math.min(19.2,pos.z));
+  pos.y=Math.max(.15,Math.min(6,pos.y));
+  drone.position.copy(pos);
+  drone.rotation.set(0,yaw,0);
+  drone.rotateX(inp.pit*.28);drone.rotateZ(-inp.rol*.28);
+  props.forEach((p,i)=>p.rotation.y+=(i%2?1:-1)*(.6+Math.abs(inp.thr)*.5));
+  /* rings */
+  if(ringIdx<rings.length){
+    if(pos.distanceTo(rings[ringIdx].position)<.9){
+      ringIdx++;$('ring').textContent=ringIdx;beep(660+ringIdx*60);
+      if(ringIdx===rings.length){
+        ringTime=(performance.now()-ringT0)/1000;
+        $('doneTime').textContent=ringTime.toFixed(1)+' 秒';
+        $('done').classList.remove('hidden');beep(1200,.3);
+      }else toast(`第 ${ringIdx} 環!`,700);
+      paintRings();
+    }
+    rings[ringIdx<rings.length?ringIdx:rings.length-1].scale.setScalar(1+Math.sin(performance.now()/180)*.06);
+    if(ringT0&&ringIdx<rings.length)$('tim').textContent=((performance.now()-ringT0)/1000).toFixed(1);
+  }
+  /* ball physics */
+  bv.y-=9.8*dt;
+  ball.position.addScaledVector(bv,dt);
+  if(ball.position.y<.35){ball.position.y=.35;bv.y=Math.abs(bv.y)*.35;bv.x*=.985;bv.z*=.985;}
+  if(Math.abs(ball.position.x)>5.4){bv.x*=-.7;ball.position.x=Math.sign(ball.position.x)*5.4;}
+  if(ball.position.z<-1){bv.z*=-.7;ball.position.z=-1;}
+  /* drone pushes ball */
+  tmp.copy(ball.position).sub(pos);
+  const d=tmp.length();
+  if(d<.88){
+    tmp.normalize();
+    const push=Math.max(1.6,vel.length()*1.35);
+    bv.x=tmp.x*push;bv.z=tmp.z*push;bv.y=Math.max(bv.y,tmp.y*push*.5+1);
+    beep(320,.05,.08);
+  }
+  /* goal detection */
+  if(ball.position.z>18.1&&Math.abs(ball.position.x)<2&&ball.position.y<1.9){
+    goals++;$('goal').textContent=goals;toast('⚽ 進球!!',1600);beep(980,.25);
+    ball.position.copy(BALL_START);bv.set(0,0,0);
+  }else if(ball.position.z>19.3){bv.z*=-.7;ball.position.z=19.3;}
+  /* camera */
+  if(camMode===0){
+    tmp.set(pos.x-fwd.x*4.6,pos.y+2.1,pos.z-fwd.z*4.6);
+    camera.position.lerp(tmp,Math.min(1,5*dt));
+    camera.lookAt(pos.x,pos.y+.4,pos.z);
+  }else{
+    tmp.set(pos.x*.4,15,pos.z*.55+4);
+    camera.position.lerp(tmp,Math.min(1,4*dt));
+    camera.lookAt(pos.x,0,pos.z);
+  }
+  $('alt').textContent=Math.max(0,pos.y-.15).toFixed(1);
+  $('spd').textContent=vel.length().toFixed(1);
+}
+
+/* ================= ui ================= */
+$('camBtn').onclick=()=>{camMode=(camMode+1)%2;
+  $('camBtn').textContent=camMode?'📷 視角:俯瞰':'📷 視角:跟隨';};
+$('resetBtn').onclick=resetAll;
+$('startBtn').onclick=()=>{$('intro').classList.add('hidden');beep(880,.12);};
+$('againBtn').onclick=()=>{$('done').classList.add('hidden');resetCourse();toast('計時將在起飛後重新開始');flying=false;pos.set(0,.15,0);vel.set(0,0,0);yaw=0;};
+addEventListener('gamepadconnected',e=>toast('🎮 手把已連線:'+e.gamepad.id.slice(0,24),2200));
+
+/* ================= loop ================= */
+function resize(){
+  const w=innerWidth,h=innerHeight;
+  renderer.setSize(w,h,false);
+  camera.aspect=w/h;camera.updateProjectionMatrix();
+}
+addEventListener('resize',resize);resize();
+camera.position.set(0,2.4,-5);camera.lookAt(0,1,4);
+let lastT=performance.now();
+renderer.setAnimationLoop(()=>{
+  const now=performance.now();
+  const dt=Math.min(.05,(now-lastT)/1000);lastT=now;
+  step(dt);
+  renderer.render(scene,camera);
+});
+</script>
+</body>
+</html>
