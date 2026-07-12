@@ -145,10 +145,18 @@ body.touchmode .stick{display:block}
 const canvas=document.getElementById('c');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.08;
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(62,1,.1,180);
 scene.add(new THREE.HemisphereLight(0x9fc4ff,0x14100a,1.0));
-const sun=new THREE.DirectionalLight(0xffffff,.55);sun.position.set(6,12,4);scene.add(sun);
+const sun=new THREE.DirectionalLight(0xfff1d6,1.05);sun.position.set(-8,16,-4);
+sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);
+sun.shadow.camera.left=-16;sun.shadow.camera.right=16;sun.shadow.camera.top=22;sun.shadow.camera.bottom=-6;
+scene.add(sun);
 
 function skyTex(top,bot){
   const cv=document.createElement('canvas');cv.width=2;cv.height=256;
@@ -171,7 +179,7 @@ const GLOWTEX=glowTex();
 
 const floorMat=new THREE.MeshLambertMaterial({color:0x0d1520});
 const floor=new THREE.Mesh(new THREE.PlaneGeometry(100,100),floorMat);
-floor.rotation.x=-Math.PI/2;scene.add(floor);
+floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
 let grid=null;
 function setGrid(hex){
   if(grid)scene.remove(grid);
@@ -290,6 +298,37 @@ function fanfare(){[523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,.22,.
 const levelGroup=new THREE.Group();scene.add(levelGroup);
 let walls=[],anims=[];
 const lamb=c=>new THREE.MeshLambertMaterial({color:c});
+function scenicEnvironment(T,level){
+  const path=new THREE.Mesh(new THREE.PlaneGeometry(6.8,28),new THREE.MeshLambertMaterial({
+    color:T.day?0xd8c7a4:0x20233b,transparent:true,opacity:T.day?.42:.58}));
+  path.rotation.x=-Math.PI/2;path.position.set(0,.018,12);path.receiveShadow=true;levelGroup.add(path);
+
+  const orb=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOWTEX,
+    color:T.day?(level===6?0xffb7c9:0xffe2a3):0xdbe7ff,transparent:true,
+    opacity:T.day?.78:.52,blending:THREE.AdditiveBlending,depthWrite:false}));
+  orb.scale.setScalar(T.day?8:4);orb.position.set(level%2?-19:18,T.day?17:14,35);levelGroup.add(orb);
+
+  for(let i=0;i<(T.day?7:3);i++){
+    const cloud=new THREE.Group();
+    const cm=new THREE.MeshBasicMaterial({color:T.day?0xfffbf1:0x7582a8,transparent:true,opacity:T.day?.3:.12,depthWrite:false});
+    for(let j=0;j<4;j++){
+      const puff=new THREE.Mesh(new THREE.SphereGeometry(1.3+j%2*.45,10,6),cm);
+      puff.scale.y=.34;puff.position.set(j*1.25,Math.sin(j)*.18,0);cloud.add(puff);
+    }
+    cloud.position.set(-18+(i*7)%36,8+(i%3)*2.4,12+i*5);cloud.scale.setScalar(.75+(i%2)*.35);
+    levelGroup.add(cloud);anims.push(t=>{cloud.position.x=-22+((t*(.18+i*.018)+i*7)%44);});
+  }
+
+  if(!T.day){
+    for(const side of[-1,1])for(let z=4;z<21;z+=4){
+      const post=new THREE.Mesh(new THREE.CylinderGeometry(.035,.055,.7,7),lamb(0x38251d));
+      post.position.set(side*3.25,.35,z);levelGroup.add(post);
+      const lamp=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOWTEX,color:0xffb45e,transparent:true,
+        opacity:.65,blending:THREE.AdditiveBlending,depthWrite:false}));
+      lamp.scale.setScalar(.72);lamp.position.set(side*3.25,.82,z);levelGroup.add(lamp);
+    }
+  }
+}
 function torii(x,z,s=1,ry=0,color=0xd0342c){
   const g=new THREE.Group(),m=lamb(color);
   const p1=new THREE.Mesh(new THREE.CylinderGeometry(.09*s,.12*s,2.2*s,8),m);
@@ -299,6 +338,10 @@ function torii(x,z,s=1,ry=0,color=0xd0342c){
   const t2=new THREE.Mesh(new THREE.BoxGeometry(1.95*s,.12*s,.22*s),m);t2.position.y=1.82*s;g.add(t2);
   const cap=new THREE.Mesh(new THREE.BoxGeometry(2.6*s,.1*s,.38*s),lamb(0x26221f));
   cap.position.y=2.34*s;g.add(cap);
+  for(const side of[-1,1]){
+    const end=new THREE.Mesh(new THREE.BoxGeometry(.42*s,.16*s,.42*s),m);
+    end.position.set(side*1.27*s,2.29*s,0);end.rotation.z=side*.16;g.add(end);
+  }
   g.position.set(x,0,z);g.rotation.y=ry;levelGroup.add(g);return g;}
 function castle(x,z,s=1,wallC=0xf2ead8,roofC=0x3a5a46){
   const g=new THREE.Group();
@@ -332,6 +375,10 @@ function volcano(x,z){
       s.material.opacity=.42*(1-k);});
   }}
 function fuji(x,z){
+  for(const dx of[-12,12]){
+    const hill=new THREE.Mesh(new THREE.ConeGeometry(10,5.5,8),lamb(0x40577b));
+    hill.position.set(x+dx,2.75,z+3);levelGroup.add(hill);
+  }
   const c=new THREE.Mesh(new THREE.ConeGeometry(17,11,9),lamb(0x51678f));
   c.position.set(x,5.5,z);levelGroup.add(c);
   const cap=new THREE.Mesh(new THREE.ConeGeometry(7.2,4.7,9),lamb(0xf4f7fb));
@@ -350,8 +397,8 @@ function sakura(x,z,s=1){
   const g=new THREE.Group();
   const tr=new THREE.Mesh(new THREE.CylinderGeometry(.1*s,.17*s,1.5*s,7),lamb(0x6b4a34));
   tr.position.y=.75*s;g.add(tr);
-  [[0,1.95,0,.8],[.6,1.6,.2,.62],[-.55,1.66,-.15,.6],[.1,1.7,-.5,.5]].forEach(([bx,by,bz,br])=>{
-    const b=new THREE.Mesh(new THREE.SphereGeometry(br*s,7,5),lamb(0xffb7d5));
+  [[0,1.95,0,.8],[.6,1.6,.2,.62],[-.55,1.66,-.15,.6],[.1,1.7,-.5,.5]].forEach(([bx,by,bz,br],i)=>{
+    const b=new THREE.Mesh(new THREE.SphereGeometry(br*s,9,6),lamb(i%2?0xffc9df:0xffa8cc));
     b.position.set(bx*s,by*s,bz*s);g.add(b);});
   g.position.set(x,0,z);levelGroup.add(g);return g;}
 function appleTree(x,z){
@@ -610,11 +657,16 @@ function loadLevel(i,preview=false){
   floorMat.color.copy(T.floor?new THREE.Color(T.floor):new THREE.Color(T.fog).multiplyScalar(.28));
   mountMat.color.setHex(T.mount);
   bgStars.visible=!T.day;
+  sun.color.setHex(T.day?0xfff1d6:0x91a9d8);
+  sun.intensity=T.day?1.05:.38;
+  renderer.toneMappingExposure=T.day?1.08:.92;
   setGrid(T.grid);
   setAmbient(L.amb||null);
+  scenicEnvironment(T,i);
   if(L.wallsDef)L.wallsDef.forEach(([x,y,z,w,h,d])=>wall(x,y,z,w,h,d,L.wallColor||0x33465f));
   if(L.gatesDef)L.gatesDef.forEach(([x,y,z,r])=>gate(x,y,z,r));
   if(L.decor)L.decor();
+  levelGroup.traverse(o=>{if(o.isMesh){o.castShadow=o.geometry.type!=='PlaneGeometry';o.receiveShadow=true;}});
   stars=L.stars.map((s,si)=>{
     const isObj=!Array.isArray(s);
     const p=isObj?s.p:s;
