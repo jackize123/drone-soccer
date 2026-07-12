@@ -172,32 +172,10 @@ sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);
 sun.shadow.camera.left=-16;sun.shadow.camera.right=16;sun.shadow.camera.top=22;sun.shadow.camera.bottom=-6;
 scene.add(sun);
 
-/* ================= post-processing pipeline (r128 addons) ================= */
-/* 畫質分級:依裝置能力自動降級,確保手機/學校電腦能跑 */
+/* 畫質分級:依裝置能力退回較輕材質,確保手機/學校電腦能跑 */
 const lowPerf=(navigator.deviceMemory&&navigator.deviceMemory<=4)||/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
-const composer=new THREE.EffectComposer(renderer);
-composer.setPixelRatio(Math.min(devicePixelRatio,lowPerf?1.5:2));
-composer.addPass(new THREE.RenderPass(scene,camera));
-let ssaoPass=null;
-if(!lowPerf){ /* SSAO 會自行重繪 beauty,須排在 bloom 之前,否則會蓋掉溢光 */
-  ssaoPass=new THREE.SSAOPass(scene,camera,innerWidth,innerHeight);
-  ssaoPass.kernelRadius=8;ssaoPass.minDistance=.0025;ssaoPass.maxDistance=.12;
-  composer.addPass(ssaoPass);
-}
-const bloomPass=new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),
-  lowPerf?.55:.8, .62, .78); /* strength,radius,threshold:只讓夠亮的光暈溢光 */
-composer.addPass(bloomPass);
-const fxaaPass=new THREE.ShaderPass(THREE.FXAAShader);
-composer.addPass(fxaaPass);
-const gammaPass=new THREE.ShaderPass(THREE.GammaCorrectionShader);
-composer.addPass(gammaPass); /* 最後轉 sRGB,避免 composer linear 造成畫面偏灰 */
-function sizePost(){
-  const pr=Math.min(devicePixelRatio,lowPerf?1.5:2);
-  composer.setSize(innerWidth,innerHeight);
-  bloomPass.setSize(innerWidth,innerHeight);
-  if(ssaoPass)ssaoPass.setSize(innerWidth,innerHeight);
-  fxaaPass.material.uniforms.resolution.value.set(1/(innerWidth*pr),1/(innerHeight*pr));
-}
+/* 註:先前的 Bloom/SSAO 後製會讓亮色關卡糊成白霧、遮住飛行路線,已移除。
+   改回原版乾淨的 renderer.render(),保留 PBR 材質/反射水面/HDRI 反射等不影響操作的強化。 */
 
 /* ================= 環境反射(IBL):從每關天空生成 envMap ================= */
 let pmrem=null,envRT=null,hdrEnv=null;
@@ -282,8 +260,8 @@ function groundNormal(){
 function stoneMat(color){
   if(lowPerf)return new THREE.MeshLambertMaterial({color});
   const m=masonryMaps();
-  const mat=new THREE.MeshStandardMaterial({color,roughness:.92,metalness:.03,
-    map:m.map,normalMap:m.normal});
+  const mat=new THREE.MeshStandardMaterial({color,roughness:.94,metalness:.03,
+    map:m.map,normalMap:m.normal,envMapIntensity:.45});
   mat.map.repeat.set(2,1);mat.normalMap.repeat.set(2,1);mat.normalScale.set(.7,.7);return mat;
 }
 
@@ -310,7 +288,7 @@ function glbRock(x,z,s){
 }
 
 const floorMat=lowPerf?new THREE.MeshLambertMaterial({color:0x0d1520})
-  :new THREE.MeshStandardMaterial({color:0x0d1520,roughness:.92,metalness:.04});
+  :new THREE.MeshStandardMaterial({color:0x0d1520,roughness:.94,metalness:.03,envMapIntensity:.35});
 if(!lowPerf){floorMat.normalMap=groundNormal();floorMat.normalMap.repeat.set(24,24);floorMat.normalScale.set(.45,.45);}
 const floor=new THREE.Mesh(new THREE.PlaneGeometry(100,100),floorMat);
 floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
@@ -438,11 +416,12 @@ function fanfare(){[523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,.22,.
 /* ================= 景點積木 ================= */
 const levelGroup=new THREE.Group();scene.add(levelGroup);
 let walls=[],anims=[];
-/* PBR:能跑的裝置用 Standard 材質(吃環境反射/IBL),低效能退回 Lambert */
+/* PBR:能跑的裝置用 Standard 材質(吃環境反射/IBL),低效能退回 Lambert
+   envMapIntensity 壓低,避免 IBL 疊加光源把亮色關卡打成過曝 */
 const lamb=c=>lowPerf?new THREE.MeshLambertMaterial({color:c})
-  :new THREE.MeshStandardMaterial({color:c,roughness:.83,metalness:.06});
+  :new THREE.MeshStandardMaterial({color:c,roughness:.85,metalness:.05,envMapIntensity:.4});
 const metalMat=c=>lowPerf?new THREE.MeshBasicMaterial({color:c})
-  :new THREE.MeshStandardMaterial({color:c,roughness:.28,metalness:.95});
+  :new THREE.MeshStandardMaterial({color:c,roughness:.3,metalness:.92,envMapIntensity:.7});
 function scenicEnvironment(T,level){
   const path=new THREE.Mesh(new THREE.PlaneGeometry(6.8,28),new THREE.MeshLambertMaterial({
     color:T.day?0xd8c7a4:0x20233b,transparent:true,opacity:T.day?.42:.58}));
@@ -643,7 +622,7 @@ function stoneLantern(x,z,s=1){
 /* 反射水面(海/護城河):低粗糙+金屬感→吃 HDRI/天空 env 反射 */
 function water(x,z,w,d,color=0x25455f){
   const m=lowPerf?new THREE.MeshLambertMaterial({color,transparent:true,opacity:.82})
-    :new THREE.MeshStandardMaterial({color,roughness:.06,metalness:.55,transparent:true,opacity:.88});
+    :new THREE.MeshStandardMaterial({color,roughness:.12,metalness:.5,envMapIntensity:.6,transparent:true,opacity:.9});
   const p=new THREE.Mesh(new THREE.PlaneGeometry(w,d),m);
   p.rotation.x=-Math.PI/2;p.position.set(x,.015,z);levelGroup.add(p);
   anims.push(t=>{p.position.y=.015+Math.sin(t*.7)*.006;});return p;}
@@ -985,7 +964,7 @@ addEventListener('gamepadconnected',()=>toast('🎮 手把已連線',1800));
 
 /* ================= main loop ================= */
 function resize(){renderer.setSize(innerWidth,innerHeight,false);
-  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();sizePost();}
+  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}
 addEventListener('resize',resize);resize();
 loadLevel(0,true);showMenu();
 let lastT=performance.now();
@@ -1013,7 +992,7 @@ renderer.setAnimationLoop(()=>{
     camera.position.lerp(tmp,Math.min(1,4*dt));
     camera.lookAt(pos.x,0,pos.z);
   }
-  composer.render();
+  renderer.render(scene,camera);
 });
 </script>
 </body>
