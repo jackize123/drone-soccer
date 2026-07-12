@@ -36,10 +36,11 @@ addon 載入順序（相依）：CopyShader → LuminosityHighPassShader → Eff
 - [x] **INC-6 glb 模型管線**（commit `de3d483`）✅ `loadGLB()`(快取/clone/關卡守衛/降級) + `glbRock()`,熊本城關卡用 CC0 Poly Haven 寫實 boulder(5.5MB,lazy-load)。
   - ⚠️ **重要發現**:CC0 來源(Poly Haven 521 個模型)**無**日本天守閣/鳥居/神社模型 → 寫實城堡 glb 需委製或購買授權。
   - ⚠️ Poly Haven 寫實 decor 偏重(~5.5MB/件,photoscan 高面數),手機載入須節制;要多用需 Draco 壓縮或改用低面數 CC0(Kenney/Quaternius)。
-- [ ] **INC-5 每關實景天空/地面**：目前 10 關共用一張 `japan-travel-panorama.png` + 程序漸層天空 + HDRI 反射。要每關實景照需**外部影像素材**（imagegen 產生或 CC0）。⚠️ **仍需外部素材**（本機無 imagegen 工具)。
+- [~] **INC-5a 程序式日本 decor**（commit `5c1b73e`）✅ `stoneLantern()`(石燈籠,火袋發光) + `water()`(反射水面,吃 env 反射)。廣島海上大鳥居+反射海面、熊本/京都石燈籠、大阪護城河。全程序式、零素材、手機友善。
+- [ ] **INC-5b 每關實景天空照**：仍用程序漸層天空 + HDRI 反射。要真實景天空照需**外部影像素材**（imagegen 或 CC0 equirect）。⚠️ **仍需外部素材**（本機無 imagegen 工具)。
 
-### 本次(2026-07-12)已完成：INC-1、2、2b、3、4、6、7 —— 全部 headless 驗證、無 JS 錯誤、已提交。
-### 剩餘：INC-5(每關實景照,需 imagegen/CC0 影像)、寫實城堡 glb(CC0 無,需委製)。GLTFLoader/RGBELoader 接口已就緒,拿到合適素材即可接。
+### 本次(2026-07-12)已完成：INC-1、2、2b、3、4、5a、6、7 —— 全部 headless 驗證、無 JS 錯誤、已提交上線。
+### 剩餘：INC-5b(每關實景天空照,需 imagegen/CC0 影像)、寫實城堡 glb(CC0 無,需委製)。接口皆已就緒。
 
 ## 素材授權
 - HDRI、boulder 皆來自 Poly Haven,授權 **CC0**(公眾領域,無需標示;仍於此註明來源以示尊重)。
