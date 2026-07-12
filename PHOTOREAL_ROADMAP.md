@@ -27,15 +27,17 @@ addon 載入順序（相依）：CopyShader → LuminosityHighPassShader → Eff
 
 ## 增量計畫（每步做完 → headless 截圖驗證 → 提交）
 
-- [ ] **INC-1 Bloom + tone mapping**（視覺 CP 值最高、風險低）
-  接 EffectComposer + RenderPass + UnrealBloomPass。本場景大量 additive sprite（星星光暈、太陽、燈籠）會因 bloom 大幅提升質感。
-  ⚠️ r128 陷阱：composer 渲染到 render target 時的 gamma/sRGB。若畫面偏灰或過亮，於最後加 `GammaCorrectionShader` pass 或設定最終 target 的 encoding。**務必截圖比對**，不可盲提交。
-- [ ] **INC-2 PBR 材質**：把 `lamb()`（`MeshLambertMaterial`）關鍵物件（城堡石垣/瓦/木、地面）改 `MeshStandardMaterial` + 程序式 roughness/normal 或貼圖。用已內建 `PMREMGenerator` 從天空/HDRI 產生環境反射，讓金屬鯱、金頂有真實反射。
-- [ ] **INC-3 HDRI 環境光**：`RGBELoader` 載入每關 `.hdr`（或用 PMREM 從全景圖生 envMap），取代目前純方向光；配真實陰影。素材放 `assets/hdri/`。
-- [ ] **INC-4 SSAO + FXAA 後製**：`SSAOPass` 加接觸陰影、`FXAAShader` 補 AA。注意行動裝置效能，需加「低效能自動關閉」開關。
-- [ ] **INC-5 每關實景天空/地面**：目前 10 關共用一張 `japan-travel-panorama.png`。改為每關各自的實景天空（沖繩海灘、廣島夕陽、京都、北海道雪…）與地面材質。素材放 `assets/scenery/<level>/`。可用 imagegen 產生或找 CC0 素材。
-- [ ] **INC-6 glb 寫實模型**：`GLTFLoader` 載入寫實天守閣（熊本/大阪/弘前）、鳥居、樹木、遠景建築，取代 `castle()`/`torii()` 積木。素材放 `assets/models/`。⚠️ 注意檔案大小（GitHub Pages + 手機載入）→ 用 Draco 壓縮或低面數。
-- [ ] **INC-7 效能與行動裝置**：加畫質分級（高/中/低），依 `devicePixelRatio` 與偵測到的幀率自動降級（關 SSAO、降 bloom、用積木 fallback），確保學校電腦/手機能跑。
+- [x] **INC-1 後製管線**（commit `0fb80ed`）✅ EffectComposer：RenderPass→SSAO→Bloom→FXAA→Gamma。bloom threshold 0.78 只讓亮光暈溢光；GammaCorrectionShader 解決 r128 composer 偏灰陷阱。已 headless 驗證日/夜關卡。
+- [x] **INC-2 PBR 材質 + IBL**（commit `bd00c40`）✅ `lamb()`→`MeshStandardMaterial`；`metalMat()` 金鯱/金頂金屬反射；`PMREMGenerator` 從每關天空生 envMap 設 `scene.environment`。
+- [x] **INC-2b 程序式貼圖**（commit `0ffb470`）✅ canvas 生成石垣 masonry map + `heightToNormal()` 法線，套城堡石垣；地面 noise 法線。
+- [x] **INC-4 SSAO + FXAA**（併入 INC-1）✅ 含 lowPerf 自動關閉。
+- [x] **INC-7 效能分級**（併入 INC-1/2）✅ `lowPerf`（deviceMemory≤4 或行動裝置 UA）自動退回 Lambert/Basic、關 SSAO、降 bloom 與 pixelRatio。
+- [ ] **INC-3 HDRI 環境光**：`RGBELoader` 已 vendored，但**需 `.hdr` 素材檔**。目前用「PMREM 從天空生 envMap」當替代（已足夠）。要真 HDRI 需放 `assets/hdri/*.hdr`（CC0 來源如 Poly Haven）。⚠️ **需外部素材**。
+- [ ] **INC-5 每關實景天空/地面**：目前 10 關共用一張 `japan-travel-panorama.png` + 程序漸層天空。要每關實景照需**外部影像素材**（imagegen 產生或 CC0）。⚠️ **需外部素材**（本機無 imagegen 工具）。
+- [ ] **INC-6 glb 寫實模型**：`GLTFLoader` 已 vendored，但**需 `.glb` 城堡/鳥居/樹模型檔**（授權 + 檔案大小 + Draco 壓縮）。⚠️ **需外部素材**，且要注意 GitHub Pages/手機載入。
+
+### 本次(2026-07-12)已完成：INC-1、2、2b、4、7 —— 全部 headless 驗證、無 JS 錯誤、已提交到分支。
+### 剩餘 INC-3/5/6 都**卡在外部素材**（HDRI、實景照、glb 模型）。程式接口(RGBELoader/GLTFLoader)已就緒，拿到素材即可接。
 
 ## 發佈流程（每個穩定里程碑）
 
