@@ -287,6 +287,28 @@ function stoneMat(color){
   mat.map.repeat.set(2,1);mat.normalMap.repeat.set(2,1);mat.normalScale.set(.7,.7);return mat;
 }
 
+/* ===== glb 寫實模型載入(GLTFLoader,含快取/關卡守衛/降級) ===== */
+const _gltf=(!lowPerf&&THREE.GLTFLoader)?new THREE.GLTFLoader():null;
+const _glbCache={};
+function loadGLB(url,onLoad){
+  if(!_gltf)return;
+  if(_glbCache[url]){onLoad(_glbCache[url].clone());return;}
+  _gltf.load(url,g=>{
+    g.scene.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+    _glbCache[url]=g.scene;onLoad(g.scene.clone());
+  },undefined,e=>console.warn('GLB load failed',url,e));
+}
+/* 寫實石頭:非低效能用 CC0 glb,低效能退回程序式 rock() */
+function glbRock(x,z,s){
+  if(!_gltf){rock(x,z);return;}
+  const lv=curLv;
+  loadGLB('assets/models/boulder_01/boulder_01_1k.gltf',m=>{
+    if(curLv!==lv)return; /* 關卡已切換就丟棄 */
+    m.scale.setScalar(s||1.4);m.position.set(x,0,z);m.rotation.y=Math.random()*6.283;
+    levelGroup.add(m);
+  });
+}
+
 const floorMat=lowPerf?new THREE.MeshLambertMaterial({color:0x0d1520})
   :new THREE.MeshStandardMaterial({color:0x0d1520,roughness:.92,metalness:.04});
 if(!lowPerf){floorMat.normalMap=groundNormal();floorMat.normalMap.repeat.set(24,24);floorMat.normalScale.set(.45,.45);}
@@ -634,7 +656,7 @@ const LEVELS=[
  {pref:'熊本縣',spot:'熊本城',desc:'飛越城牆!高高低低的星路',t3:22,t2:32,
   theme:{sky:['#101c30','#3f5f86'],fog:0x3f5f86,mount:0x1c2c44,grid:0x4a7ab0},
   stars:Array.from({length:9},(_,i)=>[0,[0.8,2.0,2.8][i%3],4+i*1.6]),
-  decor(){castle(0,19.5,1.5,0xf2eee5,0x2b2c2d,'kumamoto');rock(-3.5,8);rock(3.5,12);},
+  decor(){castle(0,19.5,1.5,0xf2eee5,0x2b2c2d,'kumamoto');glbRock(-3.5,8,1.3);glbRock(3.5,12,1.7);},
   fact:'熊本城是「日本三大名城」之一,黑色的城牆超帥氣!熊本的吉祥物酷MA萌(Kumamon)全世界都認識。'},
  {pref:'廣島縣',spot:'嚴島神社大鳥居',desc:'繞著海上大鳥居迴旋爬升!',t3:28,t2:40,
   theme:{sky:['#3a1430','#e8763a'],fog:0xe8763a,floor:0x1e3a5c,mount:0x421f33,grid:0x3a6b8a},
