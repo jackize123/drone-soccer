@@ -812,7 +812,7 @@ function physStep(dt,inp){
       if(px<py&&px<pz){pos.x=w.position.x+Math.sign(dx)*hw;vel.x=Math.sign(dx)*Math.abs(vel.x)*.5;}
       else if(py<pz){pos.y=w.position.y+Math.sign(dy)*hh;vel.y=Math.sign(dy)*Math.abs(vel.y)*.5;}
       else{pos.z=w.position.z+Math.sign(dzz)*hd;vel.z=Math.sign(dzz)*Math.abs(vel.z)*.5;}
-      tone(150,.09,.1,'sawtooth');
+      /* 碰撞不發聲:每幀觸發會變成連續噪音(使用者回報很吵) */
     }
   }
   drone.position.copy(pos);
