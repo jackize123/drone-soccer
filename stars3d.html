@@ -197,6 +197,16 @@ function sizePost(){
   fxaaPass.material.uniforms.resolution.value.set(1/(innerWidth*pr),1/(innerHeight*pr));
 }
 
+/* ================= 環境反射(IBL):從每關天空生成 envMap ================= */
+let pmrem=null,envRT=null;
+if(!lowPerf){pmrem=new THREE.PMREMGenerator(renderer);pmrem.compileEquirectangularShader();}
+function envFromSky(skyTex){
+  if(lowPerf||!pmrem)return;
+  if(envRT)envRT.dispose();
+  envRT=pmrem.fromEquirectangular(skyTex);
+  scene.environment=envRT.texture;
+}
+
 function skyTex(top,bot){
   const cv=document.createElement('canvas');cv.width=2;cv.height=256;
   const g=cv.getContext('2d');const gr=g.createLinearGradient(0,0,0,256);
@@ -216,7 +226,8 @@ function glowTex(){
 }
 const GLOWTEX=glowTex();
 
-const floorMat=new THREE.MeshLambertMaterial({color:0x0d1520});
+const floorMat=lowPerf?new THREE.MeshLambertMaterial({color:0x0d1520})
+  :new THREE.MeshStandardMaterial({color:0x0d1520,roughness:.92,metalness:.04});
 const floor=new THREE.Mesh(new THREE.PlaneGeometry(100,100),floorMat);
 floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
 const panoramaTex=new THREE.TextureLoader().load('assets/scenery/japan-travel-panorama.png');
@@ -343,7 +354,11 @@ function fanfare(){[523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,.22,.
 /* ================= 景點積木 ================= */
 const levelGroup=new THREE.Group();scene.add(levelGroup);
 let walls=[],anims=[];
-const lamb=c=>new THREE.MeshLambertMaterial({color:c});
+/* PBR:能跑的裝置用 Standard 材質(吃環境反射/IBL),低效能退回 Lambert */
+const lamb=c=>lowPerf?new THREE.MeshLambertMaterial({color:c})
+  :new THREE.MeshStandardMaterial({color:c,roughness:.83,metalness:.06});
+const metalMat=c=>lowPerf?new THREE.MeshBasicMaterial({color:c})
+  :new THREE.MeshStandardMaterial({color:c,roughness:.28,metalness:.95});
 function scenicEnvironment(T,level){
   const path=new THREE.Mesh(new THREE.PlaneGeometry(6.8,28),new THREE.MeshLambertMaterial({
     color:T.day?0xd8c7a4:0x20233b,transparent:true,opacity:T.day?.42:.58}));
@@ -423,11 +438,11 @@ function castle(x,z,s=1,wallC=0xf2ead8,roofC=0x3a5a46,style='generic'){
   }
   if(cfg.gold){
     for(const side of[-1,1]){
-      const shachi=new THREE.Mesh(new THREE.ConeGeometry(.08*s,.42*s,6),new THREE.MeshBasicMaterial({color:0xd9a928}));
+      const shachi=new THREE.Mesh(new THREE.ConeGeometry(.08*s,.42*s,6),metalMat(0xd9a928));
       shachi.position.set(side*w*.48,y+.08*s,0);shachi.rotation.z=side*.22;g.add(shachi);
     }
   }
-  const tip=new THREE.Mesh(new THREE.OctahedronGeometry(.14*s),new THREE.MeshBasicMaterial({color:cfg.gold?0xffd166:0xe7e3d8}));
+  const tip=new THREE.Mesh(new THREE.OctahedronGeometry(.14*s),cfg.gold?metalMat(0xffd166):lamb(0xe7e3d8));
   tip.position.y=y+.18*s;g.add(tip);
   g.position.set(x,0,z);levelGroup.add(g);return g;}
 function volcano(x,z){
@@ -726,6 +741,7 @@ function loadLevel(i,preview=false){
   const L=LEVELS[i],T=L.theme;
   L._sky=L._sky||skyTex(T.sky[0],T.sky[1]);
   scene.background=L._sky;
+  envFromSky(L._sky);
   scene.fog=T.day?new THREE.Fog(T.fog,26,85):new THREE.Fog(T.fog,20,60);
   floorMat.color.copy(T.floor?new THREE.Color(T.floor):new THREE.Color(T.fog).multiplyScalar(.28));
   mountMat.color.setHex(T.mount);
