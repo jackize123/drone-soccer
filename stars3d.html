@@ -152,6 +152,8 @@ body.touchmode .stick{display:block}
 <script src="lib/three-addons/MaskPass.js"></script>
 <script src="lib/three-addons/UnrealBloomPass.js"></script>
 <script src="lib/three-addons/SSAOPass.js"></script>
+<script src="lib/three-addons/RGBELoader.js"></script>
+<script src="lib/three-addons/GLTFLoader.js"></script>
 <script>
 /* ================= renderer / scene ================= */
 const canvas=document.getElementById('c');
@@ -198,11 +200,20 @@ function sizePost(){
 }
 
 /* ================= 環境反射(IBL):從每關天空生成 envMap ================= */
-let pmrem=null,envRT=null;
-if(!lowPerf){pmrem=new THREE.PMREMGenerator(renderer);pmrem.compileEquirectangularShader();}
-function envFromSky(skyTex){
+let pmrem=null,envRT=null,hdrEnv=null;
+if(!lowPerf){
+  pmrem=new THREE.PMREMGenerator(renderer);pmrem.compileEquirectangularShader();
+  /* 真 HDRI(CC0 Poly Haven)供日間關卡:更真實的天光反射 */
+  new THREE.RGBELoader().load('assets/hdri/clear_puresky_1k.hdr',tex=>{
+    tex.mapping=THREE.EquirectangularReflectionMapping;
+    const rt=pmrem.fromEquirectangular(tex);hdrEnv=rt.texture;tex.dispose();
+    const T=LEVELS[curLv]&&LEVELS[curLv].theme;if(T&&T.day)scene.environment=hdrEnv;
+  },undefined,e=>console.warn('HDRI load failed',e));
+}
+function applyEnv(T,skyTex){
   if(lowPerf||!pmrem)return;
-  if(envRT)envRT.dispose();
+  if(T.day&&hdrEnv){scene.environment=hdrEnv;return;} /* 日:真 HDRI 天光 */
+  if(envRT)envRT.dispose();                            /* 夜:程序天空 env */
   envRT=pmrem.fromEquirectangular(skyTex);
   scene.environment=envRT.texture;
 }
@@ -792,7 +803,7 @@ function loadLevel(i,preview=false){
   const L=LEVELS[i],T=L.theme;
   L._sky=L._sky||skyTex(T.sky[0],T.sky[1]);
   scene.background=L._sky;
-  envFromSky(L._sky);
+  applyEnv(T,L._sky);
   scene.fog=T.day?new THREE.Fog(T.fog,26,85):new THREE.Fog(T.fog,20,60);
   floorMat.color.copy(T.floor?new THREE.Color(T.floor):new THREE.Color(T.fog).multiplyScalar(.28));
   mountMat.color.setHex(T.mount);
