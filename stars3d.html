@@ -226,8 +226,59 @@ function glowTex(){
 }
 const GLOWTEX=glowTex();
 
+/* ===== 程序式 PBR 貼圖(canvas 生成,免外部檔案) ===== */
+function heightToNormal(src,strength){
+  const w=src.width,h=src.height,sd=src.getContext('2d').getImageData(0,0,w,h).data;
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+  const out=cv.getContext('2d').createImageData(w,h),o=out.data;
+  const at=(x,y)=>sd[((y+h)%h*w+(x+w)%w)*4];
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const dx=(at(x-1,y)-at(x+1,y))/255*strength;
+    const dy=(at(x,y-1)-at(x,y+1))/255*strength;
+    const l=Math.hypot(dx,dy,1),i=(y*w+x)*4;
+    o[i]=(dx/l*.5+.5)*255;o[i+1]=(dy/l*.5+.5)*255;o[i+2]=(1/l*.5+.5)*255;o[i+3]=255;
+  }
+  cv.getContext('2d').putImageData(out,0,0);
+  const t=new THREE.CanvasTexture(cv);t.wrapS=t.wrapT=THREE.RepeatWrapping;return t;
+}
+let _masonry=null;
+function masonryMaps(){
+  if(_masonry)return _masonry;
+  const N=256,cv=document.createElement('canvas');cv.width=cv.height=N;const g=cv.getContext('2d');
+  g.fillStyle='#8f8c85';g.fillRect(0,0,N,N);
+  const rows=8,rh=N/rows;
+  for(let r=0;r<rows;r++){const off=(r%2)*rh*.5,cols=6;
+    for(let c=-1;c<cols;c++){
+      const x=c*(N/cols)+off,y=r*rh,bw=N/cols-3,bh=rh-3;
+      const v=205+Math.random()*38|0;g.fillStyle=`rgb(${v},${v-6},${v-14})`;
+      g.fillRect(x+1.5,y+1.5,bw,bh);
+      g.fillStyle='rgba(60,54,46,.55)';g.fillRect(x+1.5,y+bh+.5,bw+3,3);g.fillRect(x+bw+.5,y+1.5,3,bh+3);
+    }}
+  const hcv=document.createElement('canvas');hcv.width=hcv.height=N;const hg=hcv.getContext('2d');
+  hg.drawImage(cv,0,0);
+  const map=new THREE.CanvasTexture(cv);map.wrapS=map.wrapT=THREE.RepeatWrapping;map.encoding=THREE.sRGBEncoding;
+  _masonry={map,normal:heightToNormal(hcv,2.2)};return _masonry;
+}
+let _groundN=null;
+function groundNormal(){
+  if(_groundN)return _groundN;
+  const N=128,cv=document.createElement('canvas');cv.width=cv.height=N;const g=cv.getContext('2d');
+  g.fillStyle='#808080';g.fillRect(0,0,N,N);
+  for(let i=0;i<2600;i++){const v=110+Math.random()*90|0;g.fillStyle=`rgb(${v},${v},${v})`;
+    g.fillRect(Math.random()*N|0,Math.random()*N|0,1,1);}
+  _groundN=heightToNormal(cv,.8);return _groundN;
+}
+function stoneMat(color){
+  if(lowPerf)return new THREE.MeshLambertMaterial({color});
+  const m=masonryMaps();
+  const mat=new THREE.MeshStandardMaterial({color,roughness:.92,metalness:.03,
+    map:m.map,normalMap:m.normal});
+  mat.map.repeat.set(2,1);mat.normalMap.repeat.set(2,1);mat.normalScale.set(.7,.7);return mat;
+}
+
 const floorMat=lowPerf?new THREE.MeshLambertMaterial({color:0x0d1520})
   :new THREE.MeshStandardMaterial({color:0x0d1520,roughness:.92,metalness:.04});
+if(!lowPerf){floorMat.normalMap=groundNormal();floorMat.normalMap.repeat.set(24,24);floorMat.normalScale.set(.45,.45);}
 const floor=new THREE.Mesh(new THREE.PlaneGeometry(100,100),floorMat);
 floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
 const panoramaTex=new THREE.TextureLoader().load('assets/scenery/japan-travel-panorama.png');
@@ -410,7 +461,7 @@ function castle(x,z,s=1,wallC=0xf2ead8,roofC=0x3a5a46,style='generic'){
     style==='kumamoto'?{tiers:4,stone:0x514e49,dark:0x17191b,gold:false,wide:3.45}:
     style==='hirosaki'?{tiers:3,stone:0x777873,dark:0x25282b,gold:false,wide:3.15}:
     {tiers:3,stone:0x6b6f78,dark:0x262b2e,gold:false,wide:3.3};
-  const stone=new THREE.Mesh(new THREE.CylinderGeometry(cfg.wide*s*.72,cfg.wide*s,1.35*s,4),lamb(cfg.stone));
+  const stone=new THREE.Mesh(new THREE.CylinderGeometry(cfg.wide*s*.72,cfg.wide*s,1.35*s,4),stoneMat(cfg.stone));
   stone.position.y=.675*s;stone.rotation.y=Math.PI/4;g.add(stone);
   const stoneLip=new THREE.Mesh(new THREE.BoxGeometry(cfg.wide*1.42*s,.13*s,cfg.wide*1.42*s),lamb(0x8b8a83));
   stoneLip.position.y=1.36*s;g.add(stoneLip);
