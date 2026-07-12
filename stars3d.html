@@ -140,6 +140,18 @@ body.touchmode .stick{display:block}
 </div>
 
 <script src="three.min.js"></script>
+<script src="lib/three-addons/CopyShader.js"></script>
+<script src="lib/three-addons/LuminosityHighPassShader.js"></script>
+<script src="lib/three-addons/GammaCorrectionShader.js"></script>
+<script src="lib/three-addons/FXAAShader.js"></script>
+<script src="lib/three-addons/SSAOShader.js"></script>
+<script src="lib/three-addons/SimplexNoise.js"></script>
+<script src="lib/three-addons/EffectComposer.js"></script>
+<script src="lib/three-addons/RenderPass.js"></script>
+<script src="lib/three-addons/ShaderPass.js"></script>
+<script src="lib/three-addons/MaskPass.js"></script>
+<script src="lib/three-addons/UnrealBloomPass.js"></script>
+<script src="lib/three-addons/SSAOPass.js"></script>
 <script>
 /* ================= renderer / scene ================= */
 const canvas=document.getElementById('c');
@@ -157,6 +169,33 @@ const sun=new THREE.DirectionalLight(0xfff1d6,1.05);sun.position.set(-8,16,-4);
 sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);
 sun.shadow.camera.left=-16;sun.shadow.camera.right=16;sun.shadow.camera.top=22;sun.shadow.camera.bottom=-6;
 scene.add(sun);
+
+/* ================= post-processing pipeline (r128 addons) ================= */
+/* 畫質分級:依裝置能力自動降級,確保手機/學校電腦能跑 */
+const lowPerf=(navigator.deviceMemory&&navigator.deviceMemory<=4)||/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+const composer=new THREE.EffectComposer(renderer);
+composer.setPixelRatio(Math.min(devicePixelRatio,lowPerf?1.5:2));
+composer.addPass(new THREE.RenderPass(scene,camera));
+let ssaoPass=null;
+if(!lowPerf){ /* SSAO 會自行重繪 beauty,須排在 bloom 之前,否則會蓋掉溢光 */
+  ssaoPass=new THREE.SSAOPass(scene,camera,innerWidth,innerHeight);
+  ssaoPass.kernelRadius=8;ssaoPass.minDistance=.0025;ssaoPass.maxDistance=.12;
+  composer.addPass(ssaoPass);
+}
+const bloomPass=new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),
+  lowPerf?.55:.8, .62, .78); /* strength,radius,threshold:只讓夠亮的光暈溢光 */
+composer.addPass(bloomPass);
+const fxaaPass=new THREE.ShaderPass(THREE.FXAAShader);
+composer.addPass(fxaaPass);
+const gammaPass=new THREE.ShaderPass(THREE.GammaCorrectionShader);
+composer.addPass(gammaPass); /* 最後轉 sRGB,避免 composer linear 造成畫面偏灰 */
+function sizePost(){
+  const pr=Math.min(devicePixelRatio,lowPerf?1.5:2);
+  composer.setSize(innerWidth,innerHeight);
+  bloomPass.setSize(innerWidth,innerHeight);
+  if(ssaoPass)ssaoPass.setSize(innerWidth,innerHeight);
+  fxaaPass.material.uniforms.resolution.value.set(1/(innerWidth*pr),1/(innerHeight*pr));
+}
 
 function skyTex(top,bot){
   const cv=document.createElement('canvas');cv.width=2;cv.height=256;
@@ -180,11 +219,18 @@ const GLOWTEX=glowTex();
 const floorMat=new THREE.MeshLambertMaterial({color:0x0d1520});
 const floor=new THREE.Mesh(new THREE.PlaneGeometry(100,100),floorMat);
 floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+const panoramaTex=new THREE.TextureLoader().load('assets/scenery/japan-travel-panorama.png');
+panoramaTex.encoding=THREE.sRGBEncoding;
+panoramaTex.minFilter=THREE.LinearFilter;
+const panoramaMat=new THREE.MeshBasicMaterial({map:panoramaTex,color:0xffffff,fog:false});
+const panorama=new THREE.Mesh(new THREE.PlaneGeometry(108,43),panoramaMat);
+panorama.position.set(0,14,53);scene.add(panorama);
 let grid=null;
 function setGrid(hex){
   if(grid)scene.remove(grid);
   const dim=new THREE.Color(hex).multiplyScalar(.42).getHex();
-  grid=new THREE.GridHelper(48,48,hex,dim);grid.position.y=.012;scene.add(grid);
+  grid=new THREE.GridHelper(48,48,hex,dim);grid.position.y=.012;
+  grid.material.transparent=true;grid.material.opacity=.11;scene.add(grid);
 }
 const mountMat=new THREE.MeshBasicMaterial({color:0x122b4a});
 const mounts=new THREE.Group();scene.add(mounts);
@@ -203,10 +249,10 @@ let bgStars;
 
 /* ================= drone ================= */
 const drone=new THREE.Group();
-drone.add(new THREE.Mesh(new THREE.SphereGeometry(.5,14,9),
-  new THREE.MeshBasicMaterial({color:0x5aa7ff,wireframe:true,transparent:true,opacity:.55})));
+const droneCageMat=new THREE.MeshBasicMaterial({color:0xffd166,wireframe:true,transparent:true,opacity:.9});
+drone.add(new THREE.Mesh(new THREE.SphereGeometry(.5,14,9),droneCageMat));
 drone.add(new THREE.Mesh(new THREE.BoxGeometry(.36,.1,.36),
-  new THREE.MeshLambertMaterial({color:0x2c3d5e})));
+  new THREE.MeshLambertMaterial({color:0xf3f6fa})));
 const nose=new THREE.Mesh(new THREE.ConeGeometry(.1,.24,10),
   new THREE.MeshLambertMaterial({color:0xff8a3c}));
 nose.rotation.x=Math.PI/2;nose.position.set(0,.02,.36);drone.add(nose);
@@ -343,19 +389,46 @@ function torii(x,z,s=1,ry=0,color=0xd0342c){
     end.position.set(side*1.27*s,2.29*s,0);end.rotation.z=side*.16;g.add(end);
   }
   g.position.set(x,0,z);g.rotation.y=ry;levelGroup.add(g);return g;}
-function castle(x,z,s=1,wallC=0xf2ead8,roofC=0x3a5a46){
+function castle(x,z,s=1,wallC=0xf2ead8,roofC=0x3a5a46,style='generic'){
   const g=new THREE.Group();
-  const stone=new THREE.Mesh(new THREE.BoxGeometry(3.8*s,1.1*s,3.8*s),lamb(0x6b6f78));
-  stone.position.y=.55*s;g.add(stone);
-  let w=2.7*s,y=1.1*s;
-  for(let i=0;i<3;i++){
-    const box=new THREE.Mesh(new THREE.BoxGeometry(w,.8*s,w),lamb(wallC));
-    box.position.y=y+.4*s;g.add(box);
-    const roof=new THREE.Mesh(new THREE.ConeGeometry(w*.85,.52*s,4),lamb(roofC));
-    roof.position.y=y+1.05*s;roof.rotation.y=Math.PI/4;g.add(roof);
-    y+=1.08*s;w*=.72;}
-  const tip=new THREE.Mesh(new THREE.OctahedronGeometry(.16*s),new THREE.MeshBasicMaterial({color:0xffd166}));
-  tip.position.y=y+.35*s;g.add(tip);
+  const cfg=style==='osaka'?{tiers:5,stone:0x77756f,dark:0x171c19,gold:true,wide:3.6}:
+    style==='kumamoto'?{tiers:4,stone:0x514e49,dark:0x17191b,gold:false,wide:3.45}:
+    style==='hirosaki'?{tiers:3,stone:0x777873,dark:0x25282b,gold:false,wide:3.15}:
+    {tiers:3,stone:0x6b6f78,dark:0x262b2e,gold:false,wide:3.3};
+  const stone=new THREE.Mesh(new THREE.CylinderGeometry(cfg.wide*s*.72,cfg.wide*s,1.35*s,4),lamb(cfg.stone));
+  stone.position.y=.675*s;stone.rotation.y=Math.PI/4;g.add(stone);
+  const stoneLip=new THREE.Mesh(new THREE.BoxGeometry(cfg.wide*1.42*s,.13*s,cfg.wide*1.42*s),lamb(0x8b8a83));
+  stoneLip.position.y=1.36*s;g.add(stoneLip);
+  let w=cfg.wide*s,y=1.4*s;
+  for(let i=0;i<cfg.tiers;i++){
+    const top=i===cfg.tiers-1;
+    const tierWall=(style==='kumamoto'&&i>0)||(style==='osaka'&&top)?cfg.dark:wallC;
+    const h=(top?.72:.62)*s;
+    const box=new THREE.Mesh(new THREE.BoxGeometry(w,h,w*.78),lamb(tierWall));
+    box.position.y=y+h/2;g.add(box);
+    const band=new THREE.Mesh(new THREE.BoxGeometry(w*1.04,.09*s,w*.82),lamb(cfg.dark));
+    band.position.y=y+h*.68;g.add(band);
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(w*.78,.43*s,4),lamb(roofC));
+    roof.position.y=y+h+.18*s;roof.rotation.y=Math.PI/4;roof.scale.z=.78;g.add(roof);
+    for(const side of[-1,1]){
+      const eave=new THREE.Mesh(new THREE.BoxGeometry(.32*s,.08*s,w*1.18),lamb(roofC));
+      eave.position.set(side*w*.53,y+h+.04*s,0);eave.rotation.z=side*.18;g.add(eave);
+    }
+    const slots=Math.max(3,6-i);
+    for(let k=0;k<slots;k++){
+      const win=new THREE.Mesh(new THREE.BoxGeometry(.11*s,.2*s,.025*s),new THREE.MeshBasicMaterial({color:0x11161a}));
+      win.position.set((k-(slots-1)/2)*w/(slots+1),y+h*.48,-w*.401);g.add(win);
+    }
+    y+=h+.44*s;w*=style==='osaka'?.83:.79;
+  }
+  if(cfg.gold){
+    for(const side of[-1,1]){
+      const shachi=new THREE.Mesh(new THREE.ConeGeometry(.08*s,.42*s,6),new THREE.MeshBasicMaterial({color:0xd9a928}));
+      shachi.position.set(side*w*.48,y+.08*s,0);shachi.rotation.z=side*.22;g.add(shachi);
+    }
+  }
+  const tip=new THREE.Mesh(new THREE.OctahedronGeometry(.14*s),new THREE.MeshBasicMaterial({color:cfg.gold?0xffd166:0xe7e3d8}));
+  tip.position.y=y+.18*s;g.add(tip);
   g.position.set(x,0,z);levelGroup.add(g);return g;}
 function volcano(x,z){
   const v=new THREE.Mesh(new THREE.ConeGeometry(13,9,7),lamb(0x4a2c24));
@@ -484,7 +557,7 @@ const LEVELS=[
  {pref:'熊本縣',spot:'熊本城',desc:'飛越城牆!高高低低的星路',t3:22,t2:32,
   theme:{sky:['#101c30','#3f5f86'],fog:0x3f5f86,mount:0x1c2c44,grid:0x4a7ab0},
   stars:Array.from({length:9},(_,i)=>[0,[0.8,2.0,2.8][i%3],4+i*1.6]),
-  decor(){castle(0,19.5,1.5,0x2e2e38,0x1f1f2e);rock(-3.5,8);rock(3.5,12);},
+  decor(){castle(0,19.5,1.5,0xf2eee5,0x2b2c2d,'kumamoto');rock(-3.5,8);rock(3.5,12);},
   fact:'熊本城是「日本三大名城」之一,黑色的城牆超帥氣!熊本的吉祥物酷MA萌(Kumamon)全世界都認識。'},
  {pref:'廣島縣',spot:'嚴島神社大鳥居',desc:'繞著海上大鳥居迴旋爬升!',t3:28,t2:40,
   theme:{sky:['#3a1430','#e8763a'],fog:0xe8763a,floor:0x1e3a5c,mount:0x421f33,grid:0x3a6b8a},
@@ -497,7 +570,7 @@ const LEVELS=[
   stars:zig(8,-1.7,1.7,4.8,1.45,1.2),
   decor(){[[0,6,0xe84a8a],[0,8.5,0x4ae8d0],[0,11,0xffd166],[0,13.5,0x9b7bff]]
     .forEach(([x,z,c])=>neon(x,z,c));
-    castle(0,19.5,1.2,0xf2ead8,0x2e7a5a);},
+    castle(0,19.5,1.2,0xf5f0e4,0x3f786a,'osaka');},
   fact:'大阪是日本的「美食之都」!章魚燒、大阪燒都來自這裡。金色屋頂的大阪城是武將豐臣秀吉蓋的。'},
  {pref:'京都府',spot:'伏見稻荷千本鳥居',desc:'穿過一座座紅色鳥居!',t3:26,t2:38,
   theme:{sky:['#1c0f26','#7a3a52'],fog:0x7a3a52,mount:0x2e1830,grid:0xd0685c},
@@ -530,7 +603,7 @@ const LEVELS=[
   wallColor:0x2e6b3a,
   stars:[[0,1.2,4.5],[-2.2,1.2,7],[-2.2,1.2,8.8],[1.8,1.4,10.5],[1.8,1.2,12.3],[0,2.6,14],[0,1.4,15.8],[1.5,1.8,17.2],[-1.5,1.8,17.2]],
   decor(){[[4.2,5],[-4.2,6],[4.2,9],[-4.2,12],[4.2,15],[-4.2,16.5]].forEach(([x,z])=>appleTree(x,z));
-    castle(0,19.8,.9,0xf5f0e6,0x3a5a7a);},
+    castle(0,19.8,.9,0xf7f5ef,0x555e5d,'hirosaki');},
   amb:{color:0xd9822b,size:.11,vy:-.7,vx:.4,op:.7},
   fact:'青森的蘋果產量是日本第一!全日本每兩顆蘋果,就有一顆來自青森。白色的弘前城春天被櫻花包圍超美。'},
  {pref:'北海道',spot:'札幌雪祭終點站',desc:'最終關!雪中大冒險,終點超大星星!',t3:52,t2:75,
@@ -656,11 +729,17 @@ function loadLevel(i,preview=false){
   scene.fog=T.day?new THREE.Fog(T.fog,26,85):new THREE.Fog(T.fog,20,60);
   floorMat.color.copy(T.floor?new THREE.Color(T.floor):new THREE.Color(T.fog).multiplyScalar(.28));
   mountMat.color.setHex(T.mount);
+  mounts.visible=false;
   bgStars.visible=!T.day;
+  panoramaMat.color.setHex(T.day?0xffffff:0x667aa8);
+  panoramaMat.opacity=T.day?1:.72;panoramaMat.transparent=!T.day;
   sun.color.setHex(T.day?0xfff1d6:0x91a9d8);
   sun.intensity=T.day?1.05:.38;
   renderer.toneMappingExposure=T.day?1.08:.92;
-  setGrid(T.grid);
+  setGrid(i===0?0x284657:T.grid);
+  grid.material.opacity=i===0?.075:.11;
+  droneCageMat.color.setHex(i===0?0xffc247:0x79c7ff);
+  droneCageMat.opacity=i===0?.95:.72;
   setAmbient(L.amb||null);
   scenicEnvironment(T,i);
   if(L.wallsDef)L.wallsDef.forEach(([x,y,z,w,h,d])=>wall(x,y,z,w,h,d,L.wallColor||0x33465f));
@@ -784,7 +863,7 @@ addEventListener('gamepadconnected',()=>toast('🎮 手把已連線',1800));
 
 /* ================= main loop ================= */
 function resize(){renderer.setSize(innerWidth,innerHeight,false);
-  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}
+  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();sizePost();}
 addEventListener('resize',resize);resize();
 loadLevel(0,true);showMenu();
 let lastT=performance.now();
@@ -812,7 +891,7 @@ renderer.setAnimationLoop(()=>{
     camera.position.lerp(tmp,Math.min(1,4*dt));
     camera.lookAt(pos.x,0,pos.z);
   }
-  renderer.render(scene,camera);
+  composer.render();
 });
 </script>
 </body>
