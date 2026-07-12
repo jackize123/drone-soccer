@@ -32,12 +32,17 @@ addon 載入順序（相依）：CopyShader → LuminosityHighPassShader → Eff
 - [x] **INC-2b 程序式貼圖**（commit `0ffb470`）✅ canvas 生成石垣 masonry map + `heightToNormal()` 法線，套城堡石垣；地面 noise 法線。
 - [x] **INC-4 SSAO + FXAA**（併入 INC-1）✅ 含 lowPerf 自動關閉。
 - [x] **INC-7 效能分級**（併入 INC-1/2）✅ `lowPerf`（deviceMemory≤4 或行動裝置 UA）自動退回 Lambert/Basic、關 SSAO、降 bloom 與 pixelRatio。
-- [ ] **INC-3 HDRI 環境光**：`RGBELoader` 已 vendored，但**需 `.hdr` 素材檔**。目前用「PMREM 從天空生 envMap」當替代（已足夠）。要真 HDRI 需放 `assets/hdri/*.hdr`（CC0 來源如 Poly Haven）。⚠️ **需外部素材**。
-- [ ] **INC-5 每關實景天空/地面**：目前 10 關共用一張 `japan-travel-panorama.png` + 程序漸層天空。要每關實景照需**外部影像素材**（imagegen 產生或 CC0）。⚠️ **需外部素材**（本機無 imagegen 工具）。
-- [ ] **INC-6 glb 寫實模型**：`GLTFLoader` 已 vendored，但**需 `.glb` 城堡/鳥居/樹模型檔**（授權 + 檔案大小 + Draco 壓縮）。⚠️ **需外部素材**，且要注意 GitHub Pages/手機載入。
+- [x] **INC-3 HDRI 環境光**（commit `b23193f`）✅ 下載 CC0 `assets/hdri/clear_puresky_1k.hdr`(Poly Haven,1.1MB);RGBELoader→PMREM,日間關卡用真 HDRI 天光,夜間維持程序 env。
+- [x] **INC-6 glb 模型管線**（commit `de3d483`）✅ `loadGLB()`(快取/clone/關卡守衛/降級) + `glbRock()`,熊本城關卡用 CC0 Poly Haven 寫實 boulder(5.5MB,lazy-load)。
+  - ⚠️ **重要發現**:CC0 來源(Poly Haven 521 個模型)**無**日本天守閣/鳥居/神社模型 → 寫實城堡 glb 需委製或購買授權。
+  - ⚠️ Poly Haven 寫實 decor 偏重(~5.5MB/件,photoscan 高面數),手機載入須節制;要多用需 Draco 壓縮或改用低面數 CC0(Kenney/Quaternius)。
+- [ ] **INC-5 每關實景天空/地面**：目前 10 關共用一張 `japan-travel-panorama.png` + 程序漸層天空 + HDRI 反射。要每關實景照需**外部影像素材**（imagegen 產生或 CC0）。⚠️ **仍需外部素材**（本機無 imagegen 工具)。
 
-### 本次(2026-07-12)已完成：INC-1、2、2b、4、7 —— 全部 headless 驗證、無 JS 錯誤、已提交到分支。
-### 剩餘 INC-3/5/6 都**卡在外部素材**（HDRI、實景照、glb 模型）。程式接口(RGBELoader/GLTFLoader)已就緒，拿到素材即可接。
+### 本次(2026-07-12)已完成：INC-1、2、2b、3、4、6、7 —— 全部 headless 驗證、無 JS 錯誤、已提交。
+### 剩餘：INC-5(每關實景照,需 imagegen/CC0 影像)、寫實城堡 glb(CC0 無,需委製)。GLTFLoader/RGBELoader 接口已就緒,拿到合適素材即可接。
+
+## 素材授權
+- HDRI、boulder 皆來自 Poly Haven,授權 **CC0**(公眾領域,無需標示;仍於此註明來源以示尊重)。
 
 ## 發佈流程（每個穩定里程碑）
 
