@@ -656,35 +656,16 @@ function normalize(t){
     .trim();
 }
 
-/* 3. 依標點切語塊,標註每塊之後的換氣長度(毫秒) -------------------- */
-const PAUSE={'，':190,',':190,'、':140,'：':260,':':260,'。':340,'.':340,'!':300,'！':300,'?':330,'？':330};
-function chunk(t){
-  const rough=[]; let buf='';
-  for(const ch of t){
-    if(PAUSE[ch]!=null){ if(buf)rough.push({txt:buf,pause:PAUSE[ch]}); buf=''; }
-    else buf+=ch;
-  }
-  if(buf)rough.push({txt:buf,pause:0});
-  /* 超過 16 字又沒有標點的語塊,補一個換氣點,免得一口氣唸完聽起來喘不過氣。
-     斷點不能硬切在中間 —— 那會把「天穹/足球」這種詞切開,反而更不像人在講話。
-     所以在中點附近找一個虛詞或連接詞當開頭,從那裡斷。 */
-  const HINT='就是要會跟和把用在有可能才也都再先然後接著這那如果因為';
-  const out=[];
-  for(const c of rough){
-    if(c.txt.length<=16){out.push(c);continue}
-    const mid=Math.round(c.txt.length/2);
-    let cut=mid;
-    outer:for(let d=0;d<=4;d++){
-      for(const p of [mid-d,mid+d]){
-        if(p<4||p>c.txt.length-4)continue;
-        if(HINT.indexOf(c.txt[p])>=0){cut=p;break outer}
-      }
-    }
-    out.push({txt:c.txt.slice(0,cut),pause:110});
-    out.push({txt:c.txt.slice(cut),pause:c.pause});
-  }
-  return out;
-}
+/* 3. 換氣 -------------------------------------------------------- */
+/* 一句話一定要用「一個」utterance,不能切成好幾個逐塊播。
+   實測(Windows / Microsoft Yating,rate 1.0):
+     整句一個 utterance ……… 「記得,對頻完之後,到遊戲結束前」4235ms
+     切成三塊逐塊播 ………… 同一句 5951ms
+     其中「記得」單獨一塊就佔掉 1293ms
+   原因是引擎會在每個 utterance 的頭尾補靜音,切得越碎、padding 累加越多,
+   聽起來就是一直斷。而引擎自己在逗號處本來就會停約 295ms(同句去掉標點是
+   3644ms,兩個逗號多出 591ms)—— 比自己排 setTimeout 更長也更自然。
+   結論:換氣交給標點,程式不要插手。 */
 
 /* 4. 韻律:由文字內容決定的固定抖動 ------------------------------ */
 /* 用內容 hash 而非亂數 —— 每句聽起來都不一樣,但同一句每次播放都一致,
@@ -692,39 +673,32 @@ function chunk(t){
 function jitter(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return ((h>>>0)%1000)/1000-.5}
 const EMPH=/注意|記得|千萬|立刻|一定要|不要|危險|重要|小心|絕對/;
 
-let speakToken=0;
+let speaking=false;      /* 目前是否還有旁白在唸 */
+let holdSince=0;         /* 時間軸為了等旁白唸完而停住的起點 */
 function speak(txt){
   if(!('speechSynthesis' in window))return;
-  speakToken++;
-  speechSynthesis.cancel();
+  speechSynthesis.cancel(); speaking=false;
   if(!voice)return;
-  const parts=chunk(normalize(txt));
-  if(!parts.length)return;
+  const t=normalize(txt);
+  if(!t)return;
+  const u=new SpeechSynthesisUtterance(t);
   const v=speechSynthesis.getVoices().find(x=>x.name===voiceName)||bestVoice();
-  const my=speakToken;
-  let i=0;
-  (function next(){
-    if(my!==speakToken||i>=parts.length)return;
-    const p=parts[i++], isLast=(i===parts.length);
-    const u=new SpeechSynthesisUtterance(p.txt);
-    if(v)u.voice=v;
-    u.lang='zh-TW';
-    const j=jitter(p.txt);
-    let r=rate*(1+j*.06);           /* ±3% 語速抖動 */
-    /* ±4% 音高抖動,基準略低於 1 避免「播報腔」。
-       註:部分雲端神經語音會忽略 pitch,此時仍靠語速與換氣撐起自然度。 */
-    let pit=.98+j*.08;
-    /* 句尾收慢 —— 只在句子有兩塊以上時才做,單塊句子沒有對比可言,放慢只會整句拖沓 */
-    if(isLast&&parts.length>1)r*=.93;
-    if(EMPH.test(p.txt)){r*=.9; pit+=.06}
-    if(/[嗎呢吧喔囉]$/.test(p.txt))pit+=.07;   /* 語尾助詞上揚 */
-    u.rate=Math.max(.5,Math.min(1.6,r));
-    u.pitch=Math.max(.6,Math.min(1.4,pit));
-    u.onend=()=>{ if(my!==speakToken)return;
-      p.pause?setTimeout(next,p.pause/Math.max(.6,rate)):next(); };
-    u.onerror=()=>{ if(my===speakToken)next() };
-    speechSynthesis.speak(u);
-  })();
+  if(v)u.voice=v;
+  u.lang='zh-TW';
+  const j=jitter(t);
+  let r=rate*(1+j*.05);             /* ±2.5% 語速抖動,句與句之間才有起伏 */
+  /* ±3.5% 音高抖動,基準略低於 1 避免「播報腔」。
+     註:部分雲端神經語音會忽略 pitch,此時仍靠選對語音與語速撐起自然度。 */
+  let pit=.98+j*.07;
+  if(EMPH.test(t)){r*=.94; pit+=.05}      /* 有安全提醒的句子整句放慢一點 */
+  if(/[嗎呢吧]$/.test(t))pit+=.08;         /* 疑問句尾上揚 */
+  u.rate=Math.max(.5,Math.min(1.6,r));
+  u.pitch=Math.max(.6,Math.min(1.4,pit));
+  /* speaking 讓時間軸知道「這句還沒唸完」,見 loop() 的 hold */
+  u.onend=()=>{speaking=false};
+  u.onerror=()=>{speaking=false};
+  speaking=true;
+  speechSynthesis.speak(u);
 }
 function setPausedVisual(p){
   stage.classList.toggle('paused',p);
@@ -741,6 +715,7 @@ function enter(i){
   chips[i].scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});
   segs.forEach((sg,k)=>{sg.classList.toggle('done',k<i);sg.querySelector('.fill').style.width='0%'});
   if('speechSynthesis' in window)speechSynthesis.cancel();
+  speaking=false;
   if(!playing)setPausedVisual(true);
 }
 function jump(i){enter(i);if(!started){started=true;bigplay.classList.add('hide')}if(!playing)togglePlay(true);}
@@ -754,11 +729,31 @@ function updateHUD(){
 }
 function loop(ts){
   if(!playing)return;
-  const dt=Math.min(.1,(ts-last)/1000);last=ts;
-  t+=dt*(voice?rate/1.2:1); /* 旁白現在會分塊換氣,唸完一句比較久,影片節奏跟著放慢 */
-  if(t>=S[idx].dur){
-    if(idx<S.length-1){enter(idx+1);}
-    else{togglePlay(false);t=S[idx].dur;updateHUD();return;}
+  /* 下限 0:分頁切回前景時 timestamp 偶爾比上一次小,沒擋的話時間軸會倒退 */
+  const dt=Math.max(0,Math.min(.1,(ts-last)/1000));last=ts;
+  const s=S[idx];
+  /* 時間到了該換下一句(或換場景),但這一句還沒唸完 —— 先把時間軸停住等它唸完。
+     每句旁白的長度不一樣,靠固定的減速係數不可能對得準;不等的話,speak() 開頭的
+     cancel() 會把還在唸的句子攔腰砍斷,那就是聽起來一直斷掉的主因。
+     停住的只有時間軸,SVG 動畫是自己跑的,畫面不會卡住。 */
+  const nextAt=(lineIdx+1<s.lines.length)?s.lines[lineIdx+1][0]:Infinity;
+  /* 用「再走一步之後」的時間預判,不能用當下的 t —— loop 的順序是
+     判斷 hold → 推進 t → updateHUD() 切句,用 t 判斷會慢一幀,
+     等發現越過切句點時 updateHUD 已經把上一句 cancel 掉了。 */
+  const willBe=t+dt*(voice?rate/1.15:1);
+  let hold=voice&&speaking&&(willBe>=nextAt||willBe>=s.dur);
+  if(hold){
+    if(!holdSince)holdSince=ts;
+    /* 保險閥:語音引擎偶爾不會回報唸完(Chrome 的已知問題),沒有上限的話
+       整支影片會永遠停在這一句。最多等 8 秒就放行。 */
+    if(ts-holdSince>8000){speaking=false;holdSince=0;hold=false}
+  }else holdSince=0;
+  if(!hold){
+    t=willBe;
+    if(t>=s.dur){
+      if(idx<S.length-1){enter(idx+1);}
+      else{togglePlay(false);t=s.dur;updateHUD();return;}
+    }
   }
   updateHUD();raf=requestAnimationFrame(loop);
 }
@@ -785,7 +780,7 @@ playbtn.onclick=()=>{if(!started){bigplay.onclick();return}togglePlay();};
 document.getElementById('prev').onclick=()=>jump(Math.max(0,idx-1));
 document.getElementById('next').onclick=()=>jump(Math.min(S.length-1,idx+1));
 voicebtn.onclick=()=>{voice=!voice;voicebtn.textContent=voice?'🔊':'🔇';
-  if(!voice&&'speechSynthesis' in window)speechSynthesis.cancel();};
+  if(!voice&&'speechSynthesis' in window){speechSynthesis.cancel();speaking=false}};
 const rateEl=document.getElementById('rate'),ratelab=document.getElementById('ratelab'),
   vsel=document.getElementById('voicesel');
 function showRate(){ratelab.textContent='語速 '+(+rate.toFixed(2))+'x';}
