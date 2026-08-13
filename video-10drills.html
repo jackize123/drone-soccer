@@ -287,9 +287,10 @@ svg text{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif}
       <span class="tdisp mono" id="tdisp">0:00 / 0:00</span>
       <button class="cbtn" id="voicebtn" title="語音旁白開/關">🔊</button>
       <select class="cbtn vsel" id="voicesel" title="旁白聲音"></select>
+      <button class="cbtn" id="vtest" title="試聽這個聲音">🎧</button>
       <div class="ratewrap" title="語速調整">
-        <span id="ratelab">語速 0.9x</span>
-        <input type="range" id="rate" min="0.6" max="1.3" step="0.05" value="0.9" aria-label="語速">
+        <span id="ratelab">語速 0.85x</span>
+        <input type="range" id="rate" min="0.5" max="1.3" step="0.05" value="0.85" aria-label="語速">
       </div>
     </div>
     <nav class="chips" id="chips" aria-label="章節"></nav>
@@ -302,7 +303,12 @@ svg text{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif}
 
   <footer>
     ⚽ 第一階段.基礎技能檢定|穩定・精準・流暢|安全・責任・團隊合作<br>
-    語音旁白使用裝置內建語音(iPad 請開啟音量);控制列可選旁白聲音、拉動滑桿調整語速;點章節可直接跳題複習。
+    語音旁白使用裝置內建語音(iPad 請開啟音量);控制列可換旁白聲音(🎧 試聽)、拉滑桿調語速;點章節可直接跳題複習。
+    <div id="voicetip" style="display:none;margin-top:8px;color:var(--gold);line-height:1.9">
+      這台裝置只有本機語音。想要更自然的聲音,用 <b>Microsoft Edge</b> 開啟這一頁,
+      旁白選單會多出「HsiaoChen Online」「YunJhe Online」等線上語音,自然度差一個世代。<br>
+      或到 Windows 設定 → 時間與語言 → 語音 → 新增語音,安裝更多中文語音。
+    </div>
   </footer>
 </div>
 
@@ -584,7 +590,8 @@ const stage=document.getElementById('stage'), subtitle=document.getElementById('
   voicebtn=document.getElementById('voicebtn');
 
 let idx=0,t=0,lineIdx=-1,playing=false,voice=true,started=false,raf=null,last=0;
-let rate=parseFloat(localStorage.getItem('droneVidRate')||'1.0');
+/* key 帶版本號:換過預設值,舊的存檔要讓它失效,否則老使用者拿不到新的預設語速 */
+let rate=parseFloat(localStorage.getItem('droneVidRate2')||'0.85');
 let voiceName=localStorage.getItem('droneVidVoice')||'';
 const total=S.reduce((a,s)=>a+s.dur,0);
 
@@ -647,8 +654,23 @@ function cnNumber(s){
   return cnNum(p[0])+'點'+p[1].split('').map(d=>CN[+d]).join('');
 }
 const CIRCLED='①②③④⑤⑥⑦⑧⑨⑩';
+
+/* 讀音修正表 —— 只影響「唸出來的內容」,字幕仍然顯示原文。
+   用 boundary 事件實測這顆引擎的斷詞,發現它的中文分詞很弱:連「長方形」這種
+   標準詞都被切成「長|方形」。多音字一旦被切成孤立單字,引擎就沒有詞彙脈絡可
+   判讀音,只能用預設音 —— 「長」該唸 cháng 卻可能唸成 zhǎng。
+   修法優先用同音字替換(讀音一模一樣、副作用為零),不行才換成引擎認得的詞。
+   註:斷詞被切開只代表「引擎沒把握」,不等於一定唸錯;所以這裡只收把握高的,
+   像「亮著/開著」的「著」雖然也被切開,但輕聲 zhe 是絕對高頻用法,不動它。 */
+const SAY=[
+  [/長開/g,'常開'],        /* 長(cháng)→常,同音且只有一個音 */
+  [/長方形/g,'常方形'],
+  [/每次轉/g,'每次轉動'],  /* 轉被孤立;「轉動」是引擎認得的詞,語意不變 */
+  [/機頭不轉/g,'機頭不轉動'],
+  [/嗶一聲/g,'響一聲'],    /* 「嗶」是罕見狀聲字,引擎可能唸不出來 */
+];
 function normalize(t){
-  return t
+  let s=t
     .replace(/[⚽🕹🔊◉▭◺◿⏻▸✓]/g,'')
     .replace(/[「」『』]/g,'')
     .replace(/[（(]([^）)]*)[）)]/g,'')                    /* 括號內是給眼睛看的註解,不唸 */
@@ -670,6 +692,9 @@ function normalize(t){
     .replace(/[;；]/g,'。')
     .replace(/\s+/g,'')
     .trim();
+  /* 讀音修正放最後:前面的清理已經把符號與數字都處理完,這裡比對的是最終要唸的字串 */
+  for(const [re,to] of SAY)s=s.replace(re,to);
+  return s;
 }
 
 /* 3. 換氣 -------------------------------------------------------- */
@@ -691,10 +716,11 @@ const EMPH=/注意|記得|千萬|立刻|一定要|不要|危險|重要|小心|�
 
 let speaking=false;      /* 目前是否還有旁白在唸 */
 let holdSince=0;         /* 時間軸為了等旁白唸完而停住的起點 */
-function speak(txt){
+/* force=true 用於試聽:即使旁白關閉也會唸,而且不會讓時間軸為它等待 */
+function speak(txt,force){
   if(!('speechSynthesis' in window))return;
   speechSynthesis.cancel(); speaking=false;
-  if(!voice)return;
+  if(!voice&&!force)return;
   const t=normalize(txt);
   if(!t)return;
   const u=new SpeechSynthesisUtterance(t);
@@ -710,10 +736,13 @@ function speak(txt){
   if(/[嗎呢吧]$/.test(t))pit+=.08;         /* 疑問句尾上揚 */
   u.rate=Math.max(.5,Math.min(1.6,r));
   u.pitch=Math.max(.6,Math.min(1.4,pit));
-  /* speaking 讓時間軸知道「這句還沒唸完」,見 loop() 的 hold */
-  u.onend=()=>{speaking=false};
-  u.onerror=()=>{speaking=false};
-  speaking=true;
+  /* speaking 讓時間軸知道「這句還沒唸完」,見 loop() 的 hold。
+     試聽不算旁白,不設 speaking,免得影片停在原地等試聽唸完。 */
+  if(!force){
+    u.onend=()=>{speaking=false};
+    u.onerror=()=>{speaking=false};
+    speaking=true;
+  }
   speechSynthesis.speak(u);
 }
 function setPausedVisual(p){
@@ -801,7 +830,7 @@ const rateEl=document.getElementById('rate'),ratelab=document.getElementById('ra
   vsel=document.getElementById('voicesel');
 function showRate(){ratelab.textContent='語速 '+(+rate.toFixed(2))+'x';}
 rateEl.value=rate;showRate();
-rateEl.oninput=()=>{rate=parseFloat(rateEl.value);showRate();localStorage.setItem('droneVidRate',rate);};
+rateEl.oninput=()=>{rate=parseFloat(rateEl.value);showRate();localStorage.setItem('droneVidRate2',rate);};
 rateEl.onchange=()=>{if(lineIdx>=0&&voice&&playing)speak(S[idx].lines[lineIdx][1]);};
 function popVoices(){
   if(!('speechSynthesis' in window))return;
@@ -813,9 +842,16 @@ function popVoices(){
       return `<option value="${v.name}">${nm}${v.name===bestName?' ★':''}</option>`;
     }).join('');
   vsel.value=ranked.some(x=>x.v.name===voiceName)?voiceName:'';
+  /* 一個線上神經語音都沒有 —— 本機 SAPI 語音再怎麼調也差一截,直接告訴使用者去哪裡拿 */
+  const tip=document.getElementById('voicetip');
+  if(tip)tip.style.display=ranked.some(x=>/Online|Natural|Neural|Google/i.test(x.v.name))?'none':'';
 }
+/* 試聽:換聲音時自動唸一句,才能直接 A/B 比較 */
+const DEMO='第六題正方形航路,每個轉角停三秒';
+document.getElementById('vtest').onclick=()=>speak(DEMO,true);
 vsel.onchange=()=>{voiceName=vsel.value;localStorage.setItem('droneVidVoice',voiceName);
-  if(lineIdx>=0&&voice&&playing)speak(S[idx].lines[lineIdx][1]);};
+  if(lineIdx>=0&&voice&&playing)speak(S[idx].lines[lineIdx][1]);
+  else speak(DEMO,true);};
 if('speechSynthesis' in window){popVoices();speechSynthesis.onvoiceschanged=popVoices;}
 document.addEventListener('keydown',e=>{
   if(e.code==='Space'){e.preventDefault();playbtn.onclick();}
