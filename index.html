@@ -4,85 +4,595 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>無人機足球・十大術科訓練場</title>
+<meta name="description" content="依「無人機足球:10 大基礎術科操縱指南」設計的模擬飛行訓練場。十關術科、星等評分、教學錄影,鍵盤與 PS5 手把雙版本。">
+<meta name="theme-color" content="#04070d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..900&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --ground:#0a0f16; --panel:#111927; --panel2:#0d1520;
-    --line:#223148; --line-soft:#1a2536;
-    --ink:#e9f1f7; --dim:#8ca3b8; --faint:#5c7186;
-    --hud:#4fe3a3; --accent:#ff8a3c; --accent-deep:#e06a1a;
-    --mono:Consolas,"Cascadia Mono",monospace;
-    --cjk:"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;
-  }
-  *{box-sizing:border-box}
-  body{
-    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
-    background:
-      radial-gradient(1200px 600px at 70% -10%, rgba(79,168,255,.08), transparent 60%),
-      radial-gradient(900px 500px at 10% 110%, rgba(255,138,60,.07), transparent 60%),
-      var(--ground);
-    color:var(--ink); font-family:var(--cjk); padding:28px 20px;
-  }
-  .wrap{max-width:680px; width:100%}
-  .kicker{font-family:var(--mono); color:var(--hud); font-size:.8rem; letter-spacing:.28em}
-  h1{font-size:clamp(1.6rem,5vw,2.4rem); font-weight:900; margin:.35em 0 .2em; line-height:1.2; text-wrap:balance}
-  h1 .accent{color:var(--accent)}
-  p.lead{color:var(--dim); line-height:1.8; font-size:.95rem; margin:0 0 26px}
-  .cards{display:grid; grid-template-columns:1fr 1fr; gap:14px}
-  @media (max-width:560px){ .cards{grid-template-columns:1fr} }
-  a.card{
-    display:flex; flex-direction:column; gap:8px; text-decoration:none; color:var(--ink);
-    background:var(--panel); border:1px solid var(--line-soft); border-radius:16px;
-    padding:20px 20px 18px; transition:transform .15s, border-color .15s;
-  }
-  a.card:hover{transform:translateY(-3px); border-color:var(--hud)}
-  a.card.pad:hover{border-color:var(--accent-deep)}
-  a.card .emo{font-size:1.9rem}
-  a.card .nm{font-weight:800; font-size:1.08rem}
-  a.card .ds{color:var(--dim); font-size:.83rem; line-height:1.7}
-  a.card .go{margin-top:auto; padding-top:10px; font-family:var(--mono); font-size:.8rem; letter-spacing:.15em; color:var(--hud)}
-  a.card.pad .go{color:var(--accent)}
-  .foot{color:var(--faint); font-size:.75rem; margin-top:26px; line-height:1.8}
-  a.card:focus-visible{outline:2px solid var(--hud); outline-offset:3px}
+:root{
+  /* 場館 —— 無人機足球在暗場館進行,護罩 LED 是主要光源 */
+  --void:#04070d;
+  --deck:#0a101a;
+  --riser:#111c2a;
+  --edge:#1e2d40;
+  --hairline:#16222f;
+
+  --ink:#eaf2fb;
+  --ink-mid:#8fa5bf;
+  --ink-low:#55697f;
+
+  --led:#35e8cf;          /* 護罩燈環 —— 系統主色 */
+  --led-deep:#0f7d6f;
+  --blue:#2f7dff;         /* 藍隊 */
+  --red:#ff3d61;          /* 紅隊 */
+  --signal:#ffa33d;       /* 目標・警示 */
+
+  --display:"Archivo","Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif;
+  --cjk:"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif;
+  --mono:"IBM Plex Mono",Consolas,"Cascadia Mono",monospace;
+
+  --gut:clamp(18px,4vw,40px);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--void); color:var(--ink);
+  font-family:var(--cjk); font-weight:400; line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+a{color:inherit}
+.shell{max-width:1180px; margin:0 auto; padding:0 var(--gut)}
+
+/* ══════════ 賽事列 ══════════ */
+.matchbar{
+  position:sticky; top:0; z-index:40;
+  background:rgba(4,7,13,.86); backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--hairline);
+}
+.matchbar .shell{
+  display:flex; align-items:center; gap:16px; height:58px;
+}
+.mark{display:flex; align-items:center; gap:10px; font-family:var(--display);
+  font-weight:900; font-stretch:112%; letter-spacing:.06em; font-size:.9rem;
+  text-decoration:none; white-space:nowrap}
+.mark .orb{
+  width:19px; height:19px; border-radius:50%; flex:none;
+  border:2px solid var(--led); position:relative;
+  box-shadow:0 0 12px rgba(53,232,207,.55), inset 0 0 6px rgba(53,232,207,.35);
+}
+.mark .orb::before,.mark .orb::after{
+  content:""; position:absolute; inset:2px; border-radius:50%;
+  border-top:1.5px solid rgba(53,232,207,.7);
+}
+.mark .orb::after{transform:rotate(60deg)}
+.matchbar .sp{flex:1}
+.teamdots{display:flex; align-items:center; gap:7px; font-family:var(--mono);
+  font-size:.7rem; letter-spacing:.16em; color:var(--ink-low)}
+.teamdots i{width:7px; height:7px; border-radius:50%; display:inline-block}
+.teamdots i.b{background:var(--blue); box-shadow:0 0 8px var(--blue)}
+.teamdots i.r{background:var(--red); box-shadow:0 0 8px var(--red)}
+.barlink{font-family:var(--mono); font-size:.74rem; letter-spacing:.14em;
+  color:var(--ink-mid); text-decoration:none; padding:.4em .2em;
+  border-bottom:1px solid transparent; transition:color .18s, border-color .18s}
+.barlink:hover{color:var(--led); border-color:var(--led)}
+@media (max-width:640px){ .teamdots,.barlink{display:none} }
+
+/* ══════════ HERO ══════════ */
+/* overflow:hidden 讓下面那圈隊色光暈裁在 hero 內,不必依賴 body 的 overflow-x */
+.hero{position:relative; overflow:hidden; padding:clamp(38px,7vw,76px) 0 clamp(30px,5vw,54px)}
+.hero::before{
+  content:""; position:absolute; inset:-20% -30% 30%; pointer-events:none;
+  background:
+    radial-gradient(48% 52% at 22% 30%, rgba(47,125,255,.13), transparent 70%),
+    radial-gradient(44% 48% at 82% 22%, rgba(255,61,97,.10), transparent 70%);
+}
+.hero .shell{position:relative; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.06fr);
+  gap:clamp(26px,4vw,52px); align-items:center}
+@media (max-width:900px){ .hero .shell{grid-template-columns:1fr} }
+
+.eyebrow{
+  display:inline-flex; align-items:center; gap:9px;
+  font-family:var(--mono); font-size:.7rem; letter-spacing:.24em; color:var(--led);
+  border:1px solid rgba(53,232,207,.28); border-radius:999px;
+  padding:.42em 1em; background:rgba(53,232,207,.05);
+}
+.eyebrow b{color:var(--ink); font-weight:600; letter-spacing:.1em}
+h1{
+  font-family:var(--display); font-weight:900; font-stretch:118%;
+  font-size:clamp(2.3rem,5.2vw,3.5rem); line-height:1.04; letter-spacing:-.015em;
+  margin:.34em 0 0; text-wrap:balance;
+}
+h1 .l2{display:block; color:var(--led)}
+h1 .sub{
+  display:block; font-family:var(--mono); font-weight:500; font-stretch:100%;
+  font-size:clamp(.66rem,1.5vw,.8rem); letter-spacing:.34em; color:var(--ink-low);
+  margin-top:1.5em; line-height:1;
+}
+.lede{color:var(--ink-mid); font-size:1rem; line-height:1.9; margin:1.5em 0 0; max-width:31em}
+.lede b{color:var(--ink); font-weight:500}
+
+.cta{display:flex; flex-wrap:wrap; gap:12px; margin-top:30px}
+.btn{
+  display:inline-flex; align-items:center; gap:.7em; text-decoration:none;
+  font-family:var(--display); font-weight:800; font-stretch:106%; font-size:.94rem;
+  padding:.86em 1.5em; border-radius:3px; border:1px solid transparent;
+  transition:transform .16s cubic-bezier(.2,.8,.3,1), box-shadow .16s, background .16s, color .16s;
+}
+.btn .arw{font-family:var(--mono); font-weight:400; transition:transform .16s}
+.btn:hover .arw{transform:translateX(4px)}
+.btn.solid{background:var(--led); color:#02120f; box-shadow:0 0 0 rgba(53,232,207,0)}
+.btn.solid:hover{transform:translateY(-2px); box-shadow:0 10px 30px -8px rgba(53,232,207,.5)}
+.btn.wire{border-color:var(--edge); color:var(--ink); background:rgba(17,28,42,.5)}
+.btn.wire:hover{transform:translateY(-2px); border-color:var(--led); color:var(--led)}
+.btn:focus-visible,a:focus-visible,.card:focus-visible{outline:2px solid var(--led); outline-offset:3px}
+
+/* ── signature: 賽場即時畫面 ── */
+.arena{
+  position:relative; border:1px solid var(--edge); border-radius:6px; overflow:hidden;
+  background:linear-gradient(180deg,#070c14,#040910);
+  box-shadow:0 40px 90px -50px rgba(0,0,0,.95), inset 0 1px 0 rgba(255,255,255,.03);
+}
+.arena svg{display:block; width:100%; height:auto}
+
+.scoreboard{
+  position:absolute; top:12px; left:12px; display:flex; align-items:stretch;
+  border:1px solid var(--edge); border-radius:3px; overflow:hidden;
+  background:rgba(4,7,13,.82); backdrop-filter:blur(8px);
+  font-family:var(--display); font-weight:800; font-stretch:100%;
+}
+.scoreboard .t{display:flex; align-items:center; gap:8px; padding:.44em .8em; font-size:.78rem; letter-spacing:.1em}
+.scoreboard .t.b{color:#9fc6ff} .scoreboard .t.r{color:#ffb0bd}
+.scoreboard .t i{width:5px; height:16px; border-radius:1px; display:block}
+.scoreboard .t.b i{background:var(--blue)} .scoreboard .t.r i{background:var(--red)}
+.scoreboard .n{font-family:var(--mono); font-size:.95rem; color:var(--ink); font-weight:600}
+.scoreboard .clk{
+  display:flex; align-items:center; padding:.44em .8em; font-family:var(--mono);
+  font-size:.78rem; color:var(--led); letter-spacing:.08em;
+  border-left:1px solid var(--hairline); border-right:1px solid var(--hairline);
+  background:rgba(53,232,207,.05);
+}
+.live{
+  position:absolute; top:12px; right:12px; display:flex; align-items:center; gap:7px;
+  font-family:var(--mono); font-size:.64rem; letter-spacing:.2em; color:var(--ink-mid);
+  border:1px solid var(--hairline); border-radius:999px; padding:.35em .8em;
+  background:rgba(4,7,13,.82); backdrop-filter:blur(8px);
+}
+.live i{width:6px; height:6px; border-radius:50%; background:var(--red); animation:pulse 1.8s infinite}
+@keyframes pulse{0%,100%{opacity:1} 50%{opacity:.25}}
+
+.telemetry{
+  display:grid; grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--hairline); background:rgba(4,7,13,.6);
+}
+.telemetry div{padding:.6em .9em; border-right:1px solid var(--hairline)}
+.telemetry div:last-child{border-right:0}
+.telemetry .k{font-family:var(--mono); font-size:.56rem; letter-spacing:.22em; color:var(--ink-low)}
+.telemetry .v{font-family:var(--mono); font-size:.92rem; color:var(--led); font-variant-numeric:tabular-nums}
+.telemetry .v small{font-size:.6em; color:var(--ink-low); letter-spacing:.1em; margin-left:.2em}
+@media (max-width:520px){ .telemetry{grid-template-columns:repeat(2,1fr)} .telemetry div:nth-child(2){border-right:0} }
+
+/* 得分環受擊發光 —— 對齊 10s 航路,護罩機在 0% 穿藍環、50% 穿紅環 */
+.ring-b,.ring-r{transform-box:fill-box; transform-origin:center}
+.hit-b{animation:hit 10s linear infinite}
+.hit-r{animation:hit 10s linear infinite; animation-delay:-5s}
+@keyframes hit{
+  0%{opacity:.95; stroke-width:9}
+  4%{opacity:.28; stroke-width:4}
+  100%{opacity:.28; stroke-width:4}
+}
+.flare-b{animation:flare 10s linear infinite}
+.flare-r{animation:flare 10s linear infinite; animation-delay:-5s}
+@keyframes flare{
+  0%{opacity:.85; transform:scale(1)}
+  9%{opacity:0; transform:scale(1.9)}
+  100%{opacity:0; transform:scale(1.9)}
+}
+.rotor{animation:spin .35s linear infinite; transform-box:fill-box; transform-origin:center}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sweep{animation:sweep 10s linear infinite}
+@keyframes sweep{0%{opacity:.85}50%{opacity:.4}100%{opacity:.85}}
+
+/* ══════════ 區段共用 ══════════ */
+.band{padding:clamp(46px,7vw,86px) 0; border-top:1px solid var(--hairline); position:relative}
+/* 賽程區用抬升面做出視覺分層,把「選介面 → 看賽程 → 進場」的節奏分開 */
+.band.raised{background:linear-gradient(180deg, rgba(17,28,42,.42), rgba(10,16,26,0) 62%)}
+.band-head{margin-bottom:clamp(24px,3.4vw,38px)}
+.band-head .tag{
+  display:flex; align-items:center; gap:12px;
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.26em; color:var(--led);
+  margin-bottom:14px;
+}
+.band-head .tag::after{content:""; flex:1; height:1px; background:linear-gradient(90deg,rgba(53,232,207,.3),transparent)}
+.band-head .row{display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); gap:14px 40px; align-items:end}
+@media (max-width:760px){ .band-head .row{grid-template-columns:1fr; align-items:start} }
+.band-head h2{
+  font-family:var(--display); font-weight:900; font-stretch:112%;
+  font-size:clamp(1.5rem,3.4vw,2.15rem); letter-spacing:-.01em; line-height:1.2; margin:0;
+}
+.band-head p{color:var(--ink-mid); font-size:.89rem; margin:0; line-height:1.85; max-width:40em}
+
+/* ── 介面選擇 ── */
+.decks{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+@media (max-width:760px){ .decks{grid-template-columns:1fr} }
+.card{
+  position:relative; display:flex; flex-direction:column; text-decoration:none; color:inherit;
+  background:linear-gradient(180deg,var(--riser),var(--deck));
+  border:1px solid var(--edge); border-radius:5px; padding:26px 26px 22px; overflow:hidden;
+  transition:transform .2s cubic-bezier(.2,.8,.3,1), border-color .2s;
+}
+.card::after{
+  content:""; position:absolute; left:0; right:0; top:0; height:2px;
+  background:linear-gradient(90deg,var(--accentc),transparent 78%);
+  opacity:.55; transition:opacity .2s;
+}
+.card:hover{transform:translateY(-4px); border-color:var(--accentc)}
+.card:hover::after{opacity:1}
+.card.b{--accentc:var(--blue)}
+.card.r{--accentc:var(--red)}
+.card.g{--accentc:var(--led)}
+.card .slot{
+  font-family:var(--mono); font-size:.63rem; letter-spacing:.22em; color:var(--ink-low);
+  display:flex; align-items:center; gap:8px;
+}
+.card .slot em{font-style:normal; color:var(--accentc)}
+.card h3{
+  font-family:var(--display); font-weight:800; font-stretch:108%;
+  font-size:1.32rem; margin:.5em 0 .3em; letter-spacing:-.005em;
+}
+.card p{color:var(--ink-mid); font-size:.87rem; line-height:1.85; margin:0 0 18px}
+.specs{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:20px}
+.specs span{
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.06em; color:var(--ink-mid);
+  border:1px solid var(--hairline); border-radius:2px; padding:.32em .6em; background:rgba(4,7,13,.45);
+}
+.card .go{
+  margin-top:auto; display:flex; align-items:center; justify-content:space-between;
+  font-family:var(--display); font-weight:800; font-size:.86rem; color:var(--accentc);
+  border-top:1px solid var(--hairline); padding-top:14px;
+}
+.card .go .arw{font-family:var(--mono); font-weight:400; transition:transform .18s}
+.card:hover .go .arw{transform:translateX(5px)}
+
+/* ── 賽程表:十關 ── */
+.period{margin-bottom:12px}
+.period-head{
+  display:flex; align-items:center; gap:14px; padding:0 0 10px;
+  border-bottom:1px solid var(--hairline); margin-bottom:14px;
+}
+.period-head .p{font-family:var(--mono); font-size:.64rem; letter-spacing:.24em; color:var(--ink-low)}
+.period-head .nm{font-family:var(--display); font-weight:800; font-size:.98rem; letter-spacing:.02em}
+.period-head .rule{flex:1; height:1px; background:linear-gradient(90deg,var(--hairline),transparent)}
+.period.p1 .period-head .nm{color:var(--led)}
+.period.p2 .period-head .nm{color:var(--signal)}
+.drills{display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:34px}
+@media (max-width:900px){ .drills{grid-template-columns:repeat(3,1fr)} }
+@media (max-width:540px){ .drills{grid-template-columns:repeat(2,1fr)} }
+.drill{
+  display:flex; flex-direction:column;
+  border:1px solid var(--hairline); border-radius:4px; padding:13px 14px 12px;
+  background:var(--deck); transition:border-color .18s, background .18s;
+}
+.drill:hover{border-color:var(--edge); background:var(--riser)}
+.drill .n{
+  font-family:var(--mono); font-size:.68rem; color:var(--ink-low); letter-spacing:.14em;
+  font-variant-numeric:tabular-nums;
+}
+.period.p1 .drill:hover .n{color:var(--led)}
+.period.p2 .drill:hover .n{color:var(--signal)}
+.drill .t{font-size:.86rem; font-weight:500; line-height:1.55; margin:6px 0 12px; text-wrap:balance}
+.drill .ax{
+  margin-top:auto; display:flex; gap:5px; flex-wrap:wrap;
+  font-family:var(--mono); font-size:.6rem; letter-spacing:.1em; color:var(--ink-low);
+}
+.drill .ax span{border:1px solid var(--hairline); border-radius:2px; padding:.2em .45em}
+.period.p1 .drill:hover .ax span{border-color:rgba(53,232,207,.32); color:var(--led)}
+.period.p2 .drill:hover .ax span{border-color:rgba(255,163,61,.32); color:var(--signal)}
+
+/* ── 教學錄影 ── */
+.films{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+@media (max-width:760px){ .films{grid-template-columns:1fr} }
+.film{
+  display:grid; grid-template-columns:76px minmax(0,1fr); gap:18px; align-items:start;
+  text-decoration:none; color:inherit; border:1px solid var(--edge); border-radius:5px;
+  padding:22px; background:linear-gradient(180deg,var(--riser),var(--deck));
+  transition:transform .2s cubic-bezier(.2,.8,.3,1), border-color .2s;
+}
+.film:hover{transform:translateY(-3px); border-color:var(--led)}
+.film .reel{
+  width:76px; height:76px; border-radius:3px; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:2px; position:relative;
+  border:1px solid var(--hairline); background:rgba(4,7,13,.6); overflow:hidden;
+}
+.film .reel b{font-family:var(--mono); font-size:1.5rem; font-weight:600; color:var(--led); line-height:1}
+.film .reel i{font-family:var(--mono); font-style:normal; font-size:.54rem; letter-spacing:.2em; color:var(--ink-low)}
+.film .reel::after{
+  content:""; position:absolute; left:0; bottom:0; height:2px; width:0;
+  background:var(--led); transition:width .5s cubic-bezier(.2,.8,.3,1);
+}
+.film:hover .reel::after{width:100%}
+.film h3{font-family:var(--display); font-weight:800; font-size:1.06rem; margin:0 0 .4em; letter-spacing:-.005em}
+.film p{color:var(--ink-mid); font-size:.84rem; line-height:1.8; margin:0 0 12px}
+.film .meta{font-family:var(--mono); font-size:.66rem; letter-spacing:.16em; color:var(--ink-low)}
+.film:hover .meta{color:var(--led)}
+
+/* ── 頁尾 ── */
+footer{border-top:1px solid var(--hairline); padding:34px 0 46px; color:var(--ink-low); font-size:.79rem; line-height:1.95}
+footer .shell{display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start}
+footer .note{flex:1; min-width:260px}
+footer b{color:var(--ink-mid); font-weight:500}
+footer .sig{font-family:var(--mono); font-size:.64rem; letter-spacing:.2em; color:#33445a}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important; animation-iteration-count:1 !important;
+    transition-duration:.001ms !important; scroll-behavior:auto !important}
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="kicker">DRONE SOCCER TRAINING GROUND</div>
-  <h1>無人機足球<span class="accent">・</span>十大術科訓練場</h1>
-  <p class="lead">依「無人機足球:10 大基礎術科操縱指南」設計的模擬飛行訓練遊戲。從起飛懸停到守門斷電共 10 關,選擇你的操作方式開始考照。</p>
-  <div class="cards">
-    <a class="card" href="keyboard.html">
-      <span class="emo">🚁⌨️</span>
-      <span class="nm">鍵盤/觸控版</span>
-      <span class="ds">電腦鍵盤(WASD+方向鍵)或平板虛擬搖桿操作。適合電腦教室與一般平板。</span>
-      <span class="go">開始訓練 →</span>
-    </a>
-    <a class="card pad" href="gamepad.html">
-      <span class="emo">🎮⚽</span>
-      <span class="nm">iPad + PS5 手把版</span>
-      <span class="ds">DualSense 藍牙連線,雙搖桿 Mode 2 配置,✕○□△ 按鍵操作,最接近真實遙控器手感。</span>
-      <span class="go">開始訓練 →</span>
-    </a>
-  </div>
-  <div class="kicker" style="margin-top:30px">TRAINING FILMS・教學錄影</div>
-  <div class="cards" style="margin-top:12px">
-    <a class="card" href="video-10drills.html">
-      <span class="emo">🎬⚽</span>
-      <span class="nm">十題流程拆解教學錄影</span>
-      <span class="ds">十大術科逐題動畫講解:口令、標準流程、評量標準。含字幕與中文語音旁白,可調語速、點章節跳題。</span>
-      <span class="go">開始觀看 →</span>
-    </a>
-    <a class="card pad" href="video-controller.html">
-      <span class="emo">🕹️📡</span>
-      <span class="nm">遙控器按鍵教學錄影</span>
-      <span class="ds">天穹足球無人機遙控器(美國手):雙搖桿、對頻、定高、緊急關閉、速度三段、燈色,含完整流程演練。</span>
-      <span class="go">開始觀看 →</span>
-    </a>
-  </div>
-  <div class="foot">
-    課程營隊教學用・成績與星等記錄在各裝置瀏覽器中,可於遊戲內「🏆 計分排行榜」匯出 CSV 與備份。<br>
-    兩個版本的功能相同(學員登記、10 關卡、星等評分、排行榜),差別只在操作方式。
+
+<div class="matchbar">
+  <div class="shell">
+    <a class="mark" href="#top"><span class="orb"></span>DRONE&nbsp;SOCCER</a>
+    <span class="sp"></span>
+    <span class="teamdots"><i class="b"></i>BLUE<i class="r" style="margin-left:8px"></i>RED</span>
+    <a class="barlink" href="#decks">選擇介面</a>
+    <a class="barlink" href="#drills">十關賽程</a>
+    <a class="barlink" href="#films">教學錄影</a>
   </div>
 </div>
+
+<header class="hero" id="top">
+  <div class="shell">
+    <div>
+      <span class="eyebrow">術科檢定模擬 <b>10 關</b></span>
+      <h1>無人機足球<span class="l2">十大術科訓練場</span>
+        <span class="sub">TAKEOFF → HOVER → YAW → ROLL → GOAL</span>
+      </h1>
+      <p class="lede">從起飛懸停練到守門斷電。每一關對應<b>「無人機足球:10 大基礎術科操縱指南」</b>的一項評量標準,飛完即時給星等,成績留在這台裝置上。</p>
+      <div class="cta">
+        <a class="btn solid" href="keyboard.html">進場訓練 <span class="arw">→</span></a>
+        <a class="btn wire" href="#films">先看教學錄影 <span class="arw">→</span></a>
+      </div>
+    </div>
+
+    <div class="arena">
+      <svg viewBox="0 0 960 520" role="img" aria-label="無人機足球場館示意:球形護罩無人機沿 8 字航路穿越藍紅兩側得分環">
+        <defs>
+          <radialGradient id="glowB" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#2f7dff" stop-opacity=".55"/><stop offset="100%" stop-color="#2f7dff" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="glowR" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ff3d61" stop-opacity=".55"/><stop offset="100%" stop-color="#ff3d61" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="glowD" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#35e8cf" stop-opacity=".45"/><stop offset="100%" stop-color="#35e8cf" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#16283c" stop-opacity=".95"/>
+            <stop offset="55%" stop-color="#0b1622" stop-opacity=".7"/>
+            <stop offset="100%" stop-color="#04070d" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#050a11" stop-opacity="0"/><stop offset="100%" stop-color="#050a11" stop-opacity="1"/>
+          </linearGradient>
+          <path id="route" d="M 250 270 C 390 140, 570 400, 710 270 C 570 140, 390 400, 250 270 Z"/>
+        </defs>
+
+        <!-- 場館頂燈:暗場館裡唯一的環境光 -->
+        <g fill="#cfe6ff" opacity=".035">
+          <polygon points="282,0 318,0 392,225 208,225"/>
+          <polygon points="642,0 678,0 752,225 568,225"/>
+        </g>
+
+        <!-- 場地地板(透視) -->
+        <polygon points="20,520 940,520 760,330 200,330" fill="url(#floor)"/>
+        <g stroke="#2c4560" stroke-width="1" class="sweep">
+          <line x1="200" y1="330" x2="20" y2="520"/><line x1="760" y1="330" x2="940" y2="520"/>
+          <line x1="340" y1="330" x2="250" y2="520"/><line x1="620" y1="330" x2="710" y2="520"/>
+          <line x1="171" y1="360" x2="789" y2="360"/><line x1="135" y1="398" x2="825" y2="398"/>
+          <line x1="92"  y1="444" x2="868" y2="444"/><line x1="47"  y1="492" x2="913" y2="492"/>
+        </g>
+        <!-- 中線 -->
+        <line x1="480" y1="330" x2="480" y2="520" stroke="#35e8cf" stroke-width="1.5" opacity=".28"/>
+        <!-- 場地邊界 -->
+        <polyline points="20,520 200,330 760,330 940,520" fill="none" stroke="#35e8cf" stroke-width="1.5" opacity=".2"/>
+
+        <!-- 藍隊得分環 -->
+        <g transform="translate(250,270)">
+          <circle r="104" fill="url(#glowB)" class="flare-b"/>
+          <line x1="0" y1="78" x2="0" y2="132" stroke="#22456f" stroke-width="6" stroke-linecap="round"/>
+          <ellipse cy="134" rx="26" ry="7" fill="#2f7dff" opacity=".14"/>
+          <ellipse rx="54" ry="80" fill="none" stroke="#123963" stroke-width="3"/>
+          <ellipse rx="54" ry="80" fill="none" stroke="#2f7dff" stroke-width="4" opacity=".3" class="hit-b"/>
+          <text y="164" text-anchor="middle" fill="#4a7cb8" font-family="IBM Plex Mono,monospace" font-size="12" letter-spacing="3">BLUE GATE</text>
+        </g>
+        <!-- 紅隊得分環 -->
+        <g transform="translate(710,270)">
+          <circle r="104" fill="url(#glowR)" class="flare-r"/>
+          <line x1="0" y1="78" x2="0" y2="132" stroke="#63242e" stroke-width="6" stroke-linecap="round"/>
+          <ellipse cy="134" rx="26" ry="7" fill="#ff3d61" opacity=".14"/>
+          <ellipse rx="54" ry="80" fill="none" stroke="#5e1a27" stroke-width="3"/>
+          <ellipse rx="54" ry="80" fill="none" stroke="#ff3d61" stroke-width="4" opacity=".3" class="hit-r"/>
+          <text y="164" text-anchor="middle" fill="#b55265" font-family="IBM Plex Mono,monospace" font-size="12" letter-spacing="3">RED GATE</text>
+        </g>
+
+        <!-- 場地向畫面外淡出 -->
+        <rect x="0" y="424" width="960" height="96" fill="url(#fade)"/>
+
+        <!-- 航路(第 8 關「8」字協調飛行) -->
+        <use href="#route" fill="none" stroke="#35e8cf" stroke-width="1" stroke-dasharray="4 9" opacity=".22"/>
+
+        <!-- 球形護罩無人機 -->
+        <g>
+          <g>
+            <circle r="40" fill="url(#glowD)"/>
+            <circle r="27" fill="rgba(53,232,207,.05)" stroke="#35e8cf" stroke-width="2"/>
+            <ellipse rx="27" ry="10" fill="none" stroke="#35e8cf" stroke-width="1" opacity=".5"/>
+            <ellipse rx="10" ry="27" fill="none" stroke="#35e8cf" stroke-width="1" opacity=".5"/>
+            <line x1="-15" y1="-15" x2="15" y2="15" stroke="#7d94ad" stroke-width="2"/>
+            <line x1="-15" y1="15" x2="15" y2="-15" stroke="#7d94ad" stroke-width="2"/>
+            <ellipse class="rotor" cx="-15" cy="-15" rx="9" ry="3" fill="rgba(255,255,255,.42)"/>
+            <ellipse class="rotor" cx="15" cy="-15" rx="9" ry="3" fill="rgba(255,255,255,.42)"/>
+            <ellipse class="rotor" cx="-15" cy="15" rx="9" ry="3" fill="rgba(255,255,255,.42)"/>
+            <ellipse class="rotor" cx="15" cy="15" rx="9" ry="3" fill="rgba(255,255,255,.42)"/>
+            <circle r="6" fill="#35e8cf"/>
+            <polygon points="0,-25 5,-14 -5,-14" fill="#ffa33d"/>
+          </g>
+          <animateMotion dur="10s" repeatCount="indefinite" rotate="auto">
+            <mpath href="#route"/>
+          </animateMotion>
+        </g>
+      </svg>
+
+      <div class="scoreboard">
+        <span class="t b"><i></i>BLUE <span class="n" id="sb">3</span></span>
+        <span class="clk" id="clk">02:41</span>
+        <span class="t r"><span class="n" id="sr">1</span> RED<i></i></span>
+      </div>
+      <div class="live"><i></i>模擬訓練中</div>
+      <div class="telemetry">
+        <div><div class="k">ALT 高度</div><div class="v" id="alt">1.42<small>M</small></div></div>
+        <div><div class="k">SPD 速度</div><div class="v" id="spd">2.8<small>M/S</small></div></div>
+        <div><div class="k">YAW 機頭</div><div class="v" id="yaw">064<small>°</small></div></div>
+        <div><div class="k">DRILL 關卡</div><div class="v">08<small>/10</small></div></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════ 介面選擇 ══════════ -->
+<section class="band" id="decks">
+  <div class="shell">
+    <div class="band-head">
+      <span class="tag">CONTROL DECK</span>
+      <div class="row">
+        <h2>選擇你的操縱介面</h2>
+        <p>兩個版本的關卡、評分與排行榜完全相同,差別只在手上拿什麼。教室有手把就選手把,手感最接近真的遙控器。</p>
+      </div>
+    </div>
+    <div class="decks">
+      <a class="card b" href="keyboard.html">
+        <span class="slot"><em>DECK A</em> · 電腦教室 / 平板</span>
+        <h3>鍵盤與觸控版</h3>
+        <p>電腦用 WASD 加方向鍵,平板直接拖曳畫面上的雙虛擬搖桿。不用任何額外設備,開網頁就能飛。</p>
+        <div class="specs"><span>WASD</span><span>方向鍵</span><span>觸控搖桿</span><span>免配對</span></div>
+        <span class="go">開始訓練 <span class="arw">→</span></span>
+      </a>
+      <a class="card r" href="gamepad.html">
+        <span class="slot"><em>DECK B</em> · iPad + 遊戲手把</span>
+        <h3>PS5 手把版</h3>
+        <p>DualSense 藍牙連線,雙類比搖桿走 Mode 2 美國手配置,✕ ○ □ △ 對應啟動、斷電與功能鍵。</p>
+        <div class="specs"><span>DualSense</span><span>Mode 2</span><span>類比搖桿</span><span>藍牙</span></div>
+        <span class="go">開始訓練 <span class="arw">→</span></span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 十關賽程 ══════════ -->
+<section class="band raised" id="drills">
+  <div class="shell">
+    <div class="band-head">
+      <span class="tag">DRILL SCHEDULE</span>
+      <div class="row">
+        <h2>十關術科賽程</h2>
+        <p>前五關練單軸操控,後五關把它們組合起來。每關依完成時間、失誤次數與精準度評 1 到 3 顆星。</p>
+      </div>
+    </div>
+
+    <div class="period p1">
+      <div class="period-head">
+        <span class="p">PERIOD 1</span><span class="nm">基礎操控</span><span class="rule"></span>
+        <span class="p">單軸分解</span>
+      </div>
+      <div class="drills">
+        <div class="drill"><div class="n">DRILL 01</div><div class="t">起飛與定點懸停</div><div class="ax"><span>ALT</span></div></div>
+        <div class="drill"><div class="n">DRILL 02</div><div class="t">四方位旋轉</div><div class="ax"><span>YAW</span></div></div>
+        <div class="drill"><div class="n">DRILL 03</div><div class="t">前後飛行控制</div><div class="ax"><span>PITCH</span></div></div>
+        <div class="drill"><div class="n">DRILL 04</div><div class="t">左右側飛控制</div><div class="ax"><span>ROLL</span></div></div>
+        <div class="drill"><div class="n">DRILL 05</div><div class="t">定高巡航</div><div class="ax"><span>ALT</span><span>PITCH</span></div></div>
+      </div>
+    </div>
+
+    <div class="period p2">
+      <div class="period-head">
+        <span class="p">PERIOD 2</span><span class="nm">應用與對抗</span><span class="rule"></span>
+        <span class="p">複合操作</span>
+      </div>
+      <div class="drills">
+        <div class="drill"><div class="n">DRILL 06</div><div class="t">2×2m 正方形航路</div><div class="ax"><span>YAW</span><span>PITCH</span></div></div>
+        <div class="drill"><div class="n">DRILL 07</div><div class="t">模擬進球急停</div><div class="ax"><span>PITCH</span><span>急停</span></div></div>
+        <div class="drill"><div class="n">DRILL 08</div><div class="t">「8」字協調飛行</div><div class="ax"><span>YAW</span><span>ROLL</span></div></div>
+        <div class="drill"><div class="n">DRILL 09</div><div class="t">五點精準降落</div><div class="ax"><span>ALT</span><span>定位</span></div></div>
+        <div class="drill"><div class="n">DRILL 10</div><div class="t">擋球守門小遊戲</div><div class="ax"><span>ROLL</span><span>斷電</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 教學錄影 ══════════ -->
+<section class="band" id="films">
+  <div class="shell">
+    <div class="band-head">
+      <span class="tag">BRIEFING ROOM</span>
+      <div class="row">
+        <h2>進場前的教學錄影</h2>
+        <p>兩支動畫講解片,附中文字幕與旁白。可以調語速、換旁白聲音,也能點章節直接跳到要看的段落。</p>
+      </div>
+    </div>
+    <div class="films">
+      <a class="film" href="video-10drills.html">
+        <span class="reel"><b>10</b><i>CHAPTERS</i></span>
+        <div>
+          <h3>十關流程拆解</h3>
+          <p>逐關示範口令、標準流程與評量標準,先知道每一關在考什麼,再進場飛。</p>
+          <span class="meta">中文旁白 · 可調語速 · 可跳章節</span>
+        </div>
+      </a>
+      <a class="film" href="video-controller.html">
+        <span class="reel"><b>12</b><i>CHAPTERS</i></span>
+        <div>
+          <h3>遙控器按鍵教學</h3>
+          <p>天穹足球無人機遙控器(美國手):雙搖桿、對頻、定高、緊急關閉、速度三段與燈色。</p>
+          <span class="meta">中文旁白 · 可調語速 · 可跳章節</span>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="shell">
+    <div class="note">
+      成績與星等記錄在<b>各台裝置的瀏覽器</b>裡,換裝置不會同步。要保留成績,請到遊戲內的「計分排行榜」匯出 CSV 備份。<br>
+      課程營隊教學用途。飛行前請確認場地淨空,人員不站在航線上。
+    </div>
+    <div class="sig">DRONE SOCCER<br>TRAINING GROUND</div>
+  </div>
+</footer>
+
+<script>
+/* 遙測讀數 —— 跟著 10 秒航路週期走,讓數字對得上畫面上的飛行 */
+(function(){
+  const alt=document.getElementById('alt'), spd=document.getElementById('spd'),
+        yaw=document.getElementById('yaw'), clk=document.getElementById('clk');
+  if(!alt) return;
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const t0=performance.now();
+  let sec=161; /* 02:41 */
+  setInterval(()=>{ sec++; clk.textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0'); },1000);
+  (function tick(){
+    const p=((performance.now()-t0)/10000)%1;           /* 航路進度 0–1 */
+    const a=1.35+Math.sin(p*Math.PI*4)*0.28;            /* 8 字上下兩圈 */
+    const s=2.4+Math.abs(Math.cos(p*Math.PI*2))*1.5;    /* 過環時最快 */
+    alt.innerHTML=a.toFixed(2)+'<small>M</small>';
+    spd.innerHTML=s.toFixed(1)+'<small>M/S</small>';
+    yaw.innerHTML=String(Math.round(p*360)).padStart(3,'0')+'<small>°</small>';
+    requestAnimationFrame(tick);
+  })();
+})();
+</script>
 </body>
 </html>

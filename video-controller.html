@@ -1,24 +1,34 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>天穹足球無人機|遙控器按鍵教學錄影</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..900&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0b1220; --panel:#131c2e; --panel2:#0f1727; --line:#22304a;
-  --hud:#4fe3a3; --accent:#ff8a3c; --blue:#5aa7ff; --red:#ff5a6e;
-  --txt:#e8eef7; --dim:#8fa3bf; --gold:#ffd166;
+  /* 賽事轉播色系 —— 與首頁 index.html 共用同一套 token */
+  --bg:#04070d; --panel:#111c2a; --panel2:#0a101a; --line:#1e2d40;
+  --hud:#35e8cf; --accent:#ffa33d; --blue:#2f7dff; --red:#ff3d61;
+  --txt:#eaf2fb; --dim:#8fa5bf; --gold:#ffd23f;
+  --display:"Archivo","Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif;
+  --mono:"IBM Plex Mono",Consolas,"SF Mono",monospace;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{
-  background:var(--bg); color:var(--txt);
-  font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;
+  background:
+    radial-gradient(1100px 560px at 72% -8%, rgba(47,125,255,.10), transparent 62%),
+    radial-gradient(880px 480px at 8% 108%, rgba(255,61,97,.07), transparent 62%),
+    var(--bg);
+  color:var(--txt);
+  font-family:"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif;
   min-height:100vh; display:flex; flex-direction:column; align-items:center;
-  padding:14px 14px 40px;
+  padding:14px 14px 40px; -webkit-font-smoothing:antialiased;
 }
-.mono{font-family:Consolas,"SF Mono",monospace}
+.mono{font-family:var(--mono)}
 .wrap{width:100%;max-width:980px}
 header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 4px 14px}
 .rec{width:12px;height:12px;border-radius:50%;background:var(--red);
@@ -28,7 +38,7 @@ header.top h1{font-size:clamp(16px,2.6vw,22px);margin:0;letter-spacing:1px}
 header.top .sub{color:var(--dim);font-size:12px;letter-spacing:2px}
 .player{background:var(--panel2);border:1px solid var(--line);border-radius:14px;
   overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.45)}
-.stagebox{position:relative;background:radial-gradient(120% 100% at 50% 0%,#101c33 0%,#0a111f 70%)}
+.stagebox{position:relative;background:radial-gradient(120% 100% at 50% 0%,#0d1c2e 0%,#060c15 70%)}
 .stage{display:block;width:100%;aspect-ratio:16/9;position:relative}
 .stage svg{display:block;width:100%;height:100%}
 .badge{position:absolute;top:10px;left:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:70%}
@@ -37,7 +47,7 @@ header.top .sub{color:var(--dim);font-size:12px;letter-spacing:2px}
 .badge .tname{background:rgba(10,17,31,.8);border:1px solid var(--line);
   padding:4px 12px;border-radius:999px;font-size:13px;font-weight:700}
 .cmd{position:absolute;top:10px;right:10px;max-width:46%;
-  background:rgba(79,227,163,.12);border:1px solid rgba(79,227,163,.4);
+  background:rgba(53,232,207,.12);border:1px solid rgba(53,232,207,.4);
   color:var(--hud);font-size:12px;padding:4px 10px;border-radius:8px}
 .cmd b{color:#bfffe4}
 .sub-band{position:absolute;left:0;right:0;bottom:0;padding:10px 16px 12px;text-align:center;
@@ -50,7 +60,7 @@ header.top .sub{color:var(--dim);font-size:12px;letter-spacing:2px}
   flex-direction:column;gap:12px;color:var(--txt)}
 .bigplay .btn{width:88px;height:88px;border-radius:50%;background:var(--hud);color:#06251a;
   display:flex;align-items:center;justify-content:center;font-size:38px;
-  box-shadow:0 0 0 10px rgba(79,227,163,.18),0 8px 30px rgba(0,0,0,.5)}
+  box-shadow:0 0 0 10px rgba(53,232,207,.18),0 8px 30px rgba(0,0,0,.5)}
 .bigplay p{margin:0;font-size:14px;color:var(--dim)}
 .bigplay.hide{display:none}
 .controls{display:flex;align-items:center;gap:10px;padding:10px 14px;
@@ -76,7 +86,7 @@ header.top .sub{color:var(--dim);font-size:12px;letter-spacing:2px}
 .chip{flex:0 0 auto;background:#18233a;border:1px solid var(--line);color:var(--dim);
   font-size:12px;padding:6px 11px;border-radius:999px;cursor:pointer;white-space:nowrap}
 .chip .n{color:var(--accent);font-weight:700;margin-right:4px}
-.chip.cur{background:rgba(79,227,163,.15);border-color:var(--hud);color:#dffff0}
+.chip.cur{background:rgba(53,232,207,.15);border-color:var(--hud);color:#dffff0}
 .infogrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
 @media(max-width:640px){.infogrid{grid-template-columns:1fr}}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
@@ -92,7 +102,7 @@ footer{margin-top:22px;color:var(--dim);font-size:12px;text-align:center;line-he
 /* ===== SVG common ===== */
 svg text{font-family:"Microsoft JhengHei",sans-serif}
 .lbl{fill:#9fb3cc;font-size:14px}
-.klbl{fill:#8fa3bf;font-size:11px}
+.klbl{fill:#8fa5bf;font-size:11px}
 .mlbl{fill:var(--hud);font-size:13px;font-family:Consolas,monospace}
 .rotor,.knob,.mv{transform-box:fill-box;transform-origin:center}
 .rotor{animation:spin .45s linear infinite}
@@ -159,17 +169,35 @@ svg text{font-family:"Microsoft JhengHei",sans-serif}
 @keyframes sd{0%,32%{opacity:.15}34%,65%{opacity:.5}67%,100%{opacity:1}}
 /* light color cycle */
 .lcage{animation:lcyc 6s infinite}
-@keyframes lcyc{0%,28%{stroke:#5aa7ff}33%,61%{stroke:#ff5a6e}66%,94%{stroke:#4fe3a3}100%{stroke:#5aa7ff}}
+@keyframes lcyc{0%,28%{stroke:#2f7dff}33%,61%{stroke:#ff3d61}66%,94%{stroke:#35e8cf}100%{stroke:#2f7dff}}
 .lcore{animation:lcyc2 6s infinite}
-@keyframes lcyc2{0%,28%{fill:#5aa7ff}33%,61%{fill:#ff5a6e}66%,94%{fill:#4fe3a3}100%{fill:#5aa7ff}}
+@keyframes lcyc2{0%,28%{fill:#2f7dff}33%,61%{fill:#ff3d61}66%,94%{fill:#35e8cf}100%{fill:#2f7dff}}
 /* full flow */
 .f-drone{animation:ffly 20s linear infinite}
 @keyframes ffly{0%,22%{transform:translateY(0)}30%,62%{transform:translateY(-140px)}
  72%,80%{transform:translateY(0)}100%{transform:translateY(0)}}
 .f-rotor{animation:frot 20s linear infinite}
 @keyframes frot{0%,16%{opacity:0}18%,80%{opacity:1}84%,100%{opacity:0}}
-.fstep{animation:fstep 20s linear infinite;fill:#8fa3bf}
-@keyframes fstep{0%,2%{fill:#8fa3bf}3%,15%{fill:#ffffff;font-weight:700}16%,100%{fill:#8fa3bf}}
+.fstep{animation:fstep 20s linear infinite;fill:#8fa5bf}
+@keyframes fstep{0%,2%{fill:#8fa5bf}3%,15%{fill:#ffffff;font-weight:700}16%,100%{fill:#8fa5bf}}
+
+/* ===== 設計系統升級層:與首頁共用的賽事轉播視覺 ===== */
+header.top{width:100%}
+header.top h1{font-family:var(--display);font-weight:900;font-stretch:112%;letter-spacing:0}
+.homelink{
+  margin-left:auto;text-decoration:none;font-size:12px;letter-spacing:2px;
+  color:#55697f;padding:6px 0;white-space:nowrap;transition:color .18s;
+}
+.homelink:hover{color:var(--hud)}
+.homelink:focus-visible{outline:2px solid var(--hud);outline-offset:3px}
+/* 面板改走銳角「儀表」質感,跟首頁與遊戲頁一致 */
+.player{border-radius:6px}
+.card{border-radius:6px}
+.cbtn,.ratewrap,.vsel{border-radius:4px}
+.cbtn,.chip{font-family:var(--display);font-weight:600}
+.card h3,.mlbl{font-family:var(--mono)}
+.ratewrap span{font-family:var(--mono)}
+svg text{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif}
 </style>
 
 </head>
@@ -179,8 +207,9 @@ svg text{font-family:"Microsoft JhengHei",sans-serif}
     <span class="rec" aria-hidden="true"></span>
     <div>
       <h1>天穹足球無人機|遙控器按鍵教學錄影(美國手)</h1>
-      <div class="sub mono">CONTROLLER GUIDE ⚽ MODE 2 TRAINING FILM</div>
+      <div class="sub mono">CONTROLLER GUIDE · MODE 2 TRAINING FILM</div>
     </div>
+    <a class="homelink mono" href="index.html">← 回首頁</a>
   </header>
 
   <div class="player">
@@ -203,8 +232,8 @@ svg text{font-family:"Microsoft JhengHei",sans-serif}
       <button class="cbtn" id="voicebtn" title="語音旁白開/關">🔊</button>
       <select class="cbtn vsel" id="voicesel" title="旁白聲音"></select>
       <div class="ratewrap" title="語速調整">
-        <span id="ratelab">語速 0.9x</span>
-        <input type="range" id="rate" min="0.6" max="1.3" step="0.05" value="0.9" aria-label="語速">
+        <span id="ratelab">語速 1x</span>
+        <input type="range" id="rate" min="0.6" max="1.3" step="0.05" value="1.0" aria-label="語速">
       </div>
     </div>
     <nav class="chips" id="chips" aria-label="章節"></nav>
@@ -278,7 +307,7 @@ function ctrl(hl='',kl='',kr='',x=40,y=45,scale=1){
 }
 function droneSideMini(color,rotorCls=''){
   return `<g>
-    <circle r="26" fill="rgba(90,167,255,.10)" stroke="${color}" stroke-width="2.5" class="cageMini"/>
+    <circle r="26" fill="rgba(47,125,255,.10)" stroke="${color}" stroke-width="2.5" class="cageMini"/>
     <line x1="-17" y1="6" x2="17" y2="6" stroke="#9fb3cc" stroke-width="3.5"/>
     <rect x="-6" y="-1" width="12" height="8" rx="2" fill="${color}"/>
     <g transform="translate(-12,-5)" class="${rotorCls}"><g class="rotor"><ellipse rx="9" ry="3" fill="rgba(255,255,255,.4)"/></g></g>
@@ -287,7 +316,7 @@ function droneSideMini(color,rotorCls=''){
 }
 function droneTopMini(color,cageCls='',coreCls=''){
   return `<g>
-    <circle r="30" fill="rgba(90,167,255,.10)" stroke="${color}" stroke-width="2.5" class="${cageCls}"/>
+    <circle r="30" fill="rgba(47,125,255,.10)" stroke="${color}" stroke-width="2.5" class="${cageCls}"/>
     <line x1="-18" y1="-18" x2="18" y2="18" stroke="#9fb3cc" stroke-width="3"/>
     <line x1="-18" y1="18" x2="18" y2="-18" stroke="#9fb3cc" stroke-width="3"/>
     ${[[-18,-18],[18,-18],[-18,18],[18,18]].map(([x,y])=>
@@ -297,7 +326,7 @@ function droneTopMini(color,cageCls='',coreCls=''){
   </g>`;
 }
 const pane=(inner,cap)=>`<g transform="translate(505,60)">
-  <rect width="278" height="325" rx="16" fill="#0f1727" stroke="#22304a" stroke-width="1.5"/>
+  <rect width="278" height="325" rx="16" fill="#0a101a" stroke="#1e2d40" stroke-width="1.5"/>
   ${inner}
   <text x="139" y="308" text-anchor="middle" class="lbl" font-size="12">${cap}</text></g>`;
 const paneGround=`<line x1="20" y1="262" x2="258" y2="262" stroke="#33465f" stroke-width="2.5"/>`;
@@ -307,9 +336,9 @@ const BASE=`<svg viewBox="0 0 800 450">`;
 const S=[];
 
 S.push({label:'序', part:'開場', name:'認識你的遙控器(美國手)', cmd:'雙搖桿+功能鍵', dur:19,
-  lines:[[0,'天穹足球無人機——遙控器按鍵教學'],[3.5,'這是「美國手」遙控器:左搖桿管高度和旋轉'],
-    [8,'右搖桿管前後和左右平移'],[11.5,'中間是對頻點,下方有功能鍵和關機鈕'],
-    [15,'接下來一顆一顆認識它們!']],
+  lines:[[0,'來,我們現在來學天穹足球無人機遙控器'],[3.5,'這支是美國手,左搖桿管高度跟旋轉'],
+    [8,'右搖桿是管前後跟左右平移的喔'],[11.5,'中間是對頻點,下面有功能鍵跟關機鈕'],
+    [15,'我們一顆一顆來認識它們']],
   steps:['左搖桿:上升/下降+左右旋轉','右搖桿:前進/後退+左右平移','中間:對頻點|最下方:關機鈕','四顆功能鍵:緊急關閉/啟動、定高、燈色、速度'],
   crit:['「美國手」= Mode 2,油門在左手','拿穩遙控器,雙手拇指輕放搖桿上'],
   stage:`${BASE}
@@ -327,9 +356,9 @@ S.push({label:'序', part:'開場', name:'認識你的遙控器(美國手)', cmd
   </svg>`});
 
 S.push({label:'1 開機對頻', part:'STEP 1', name:'開機與對頻(中間對頻點)', cmd:'先開飛機,再開遙控器', dur:20,
-  lines:[[0,'開機與對頻:按下中間的對頻點'],[4,'先開飛機、放平地,再開遙控器對頻'],
-    [8.5,'燈號恆亮,代表連線成功'],[11.5,'重要:對頻完成後,到遊戲結束前'],
-    [15,'遙控器都不要關機!']],
+  lines:[[0,'開機對頻,按下中間那個點'],[4,'先開飛機放平地,再開遙控器對頻'],
+    [8.5,'燈亮著,就代表連線成功囉'],[11.5,'記得,對頻完之後,到遊戲結束前'],
+    [15,'遙控器千萬不要關機喔']],
   steps:['① 先開飛機電源,平放地面','② 再開遙控器','③ 按中間「對頻點」完成對頻','④ 燈號恆亮=連線成功'],
   crit:['對頻後到遊戲結束,遙控器不關機','關機鈕在最下方,結束才按'],
   stage:`${BASE}
@@ -347,8 +376,8 @@ S.push({label:'1 開機對頻', part:'STEP 1', name:'開機與對頻(中間對�
   </svg>`});
 
 S.push({label:'2 定高鈕', part:'STEP 2', name:'定高鈕(保持長開!)', cmd:'右邊長方形.<b>長開</b>', dur:17,
-  lines:[[0,'定高鈕:右邊這顆長方形按鍵'],[4,'必須保持「長開」狀態'],
-    [7,'定高開著,飛機才會自動鎖住高度'],[10.5,'沒開定高,飛機會亂飛、很難控制!']],
+  lines:[[0,'右邊那顆長方形,就是定高鈕'],[4,'一定要保持長開的狀態'],
+    [7,'定高開著,飛機才會自動鎖住高度'],[10.5,'沒開的話,飛機會亂飛,很難控制']],
   steps:['起飛前確認:定高鈕保持「長開」','定高開啟=飛機自動維持高度','放開油門桿,飛機停在原高度懸停'],
   crit:['沒開定高,飛機會亂飛!','每次起飛前都要檢查一次'],
   stage:`${BASE}
@@ -365,8 +394,8 @@ S.push({label:'2 定高鈕', part:'STEP 2', name:'定高鈕(保持長開!)', cmd
   </svg>`});
 
 S.push({label:'3 左桿升降', part:'左搖桿', name:'上升/下降(油門)', cmd:'上推=升.下拉=降', dur:17,
-  lines:[[0,'左搖桿(上下):控制上升與下降'],[4,'上推——上升;下拉——下降'],
-    [7.5,'打桿要小幅、緩慢,像捏著雞蛋'],[11.5,'放開搖桿自動回中,維持懸停']],
+  lines:[[0,'左搖桿上下,是控制上升跟下降'],[4,'上推就是上升,下拉就是下降'],
+    [7.5,'推桿要小幅、緩慢,像捏著雞蛋一樣'],[11.5,'放開搖桿會回中,飛機就會懸停']],
   steps:['上推:上升|下拉:下降','小幅、緩慢打桿','放開自動回中=懸停'],
   crit:['對應第 1 題:起飛與定點懸停','猛推油門會衝太高,輕輕帶桿'],
   stage:`${BASE}
@@ -382,8 +411,8 @@ S.push({label:'3 左桿升降', part:'左搖桿', name:'上升/下降(油門)', 
   </svg>`});
 
 S.push({label:'4 左桿旋轉', part:'左搖桿', name:'左右旋轉(Yaw)', cmd:'左打=左旋.右打=右旋', dur:15,
-  lines:[[0,'左搖桿(左右):控制機頭旋轉'],[3.5,'左打——向左旋轉;右打——向右旋轉'],
-    [8,'第 2 題四方位旋轉:每次轉 90 度停 3 秒']],
+  lines:[[0,'左搖桿左右,是控制機頭旋轉'],[3.5,'左打就向左轉,右打就向右轉'],
+    [8,'第 2 題四方位旋轉,每次轉 90 度停 3 秒']],
   steps:['左打:機頭左轉|右打:機頭右轉','眼睛跟著機頭(橘色標記)走'],
   crit:['對應第 2 題:四方位旋轉','轉 90° 就停,不要一直轉'],
   stage:`${BASE}
@@ -396,8 +425,8 @@ S.push({label:'4 左桿旋轉', part:'左搖桿', name:'左右旋轉(Yaw)', cmd:
   </svg>`});
 
 S.push({label:'5 右桿前後', part:'右搖桿', name:'前進/後退(Pitch)', cmd:'上推=前.下拉=後', dur:15,
-  lines:[[0,'右搖桿(上下):控制前進與後退'],[4,'上推——前進;下拉——後退'],
-    [7.5,'急停技巧:反向推桿,再快速回中!']],
+  lines:[[0,'右搖桿上下,是控制前進跟後退'],[4,'上推是前進,下拉是後退'],
+    [7.5,'想急停的話,反向推桿再快速回中']],
   steps:['上推:前進|下拉:後退','急停:反向推桿 → 回中'],
   crit:['對應第 3 題前後移動、第 6 題急停','航跡走直線,眼睛顧好機頭方向'],
   stage:`${BASE}
@@ -411,8 +440,8 @@ S.push({label:'5 右桿前後', part:'右搖桿', name:'前進/後退(Pitch)', c
   </svg>`});
 
 S.push({label:'6 右桿平移', part:'右搖桿', name:'左右平移(Roll)', cmd:'左打=左移.右打=右移', dur:16,
-  lines:[[0,'右搖桿(左右):控制左右平移'],[3.5,'左打——左平移;右打——右平移'],
-    [7,'記住:機頭不轉,機身平移'],[10.5,'這就是側飛(Roll)的感覺']],
+  lines:[[0,'右搖桿左右,是控制左右平移'],[3.5,'左打就向左平移,右打就向右平移'],
+    [7,'記住喔,機頭不轉,機身直接平移'],[10.5,'這就是側飛的感覺']],
   steps:['左打:左平移|右打:右平移','機頭保持朝前,機身橫著滑'],
   crit:['對應第 4 題:左右側飛','重點觀念:機頭方向 ≠ 移動方向'],
   stage:`${BASE}
@@ -427,9 +456,9 @@ S.push({label:'6 右桿平移', part:'右搖桿', name:'左右平移(Roll)', cmd
   </svg>`});
 
 S.push({label:'7 緊急關閉', part:'功能鍵', name:'緊急關閉/啟動鈕(左長方形)', cmd:'危險=立刻按!', dur:19,
-  lines:[[0,'左邊長方形:緊急關閉與啟動鈕'],[4,'按一下:啟動馬達;再按:緊急關閉'],
-    [8,'危險時——纏網、快撞到人——立刻按下!'],[12,'第 10 題:落地後 1 秒內完成斷電'],
-    [15.5,'注意:空中斷電會直接墜落']],
+  lines:[[0,'左邊長方形,是緊急關閉跟啟動鈕'],[4,'按一下啟動馬達,再按是緊急關閉'],
+    [8,'遇到纏網或是快撞到人,立刻按下'],[12,'第 10 題落地後,記得 1 秒內完成斷電'],
+    [15.5,'注意,空中斷電會直接摔機喔']],
   steps:['按一下:啟動(馬達轉動)','再按一下:緊急關閉(停槳)','落地後 1 秒內斷電=第 10 題滿分'],
   crit:['空中斷電會直接墜落,危險時才用','斷電是保護自己和隊友的動作'],
   stage:`${BASE}
@@ -437,33 +466,33 @@ S.push({label:'7 緊急關閉', part:'功能鍵', name:'緊急關閉/啟動鈕(�
     ${pane(`
       ${paneGround}
       <g transform="translate(110,255)"><g class="mv r-drop">
-        <g><circle r="26" fill="rgba(255,90,110,.12)" stroke="var(--red)" stroke-width="2.5"/>
+        <g><circle r="26" fill="rgba(255,61,97,.12)" stroke="var(--red)" stroke-width="2.5"/>
         <line x1="-17" y1="6" x2="17" y2="6" stroke="#9fb3cc" stroke-width="3.5"/>
         <rect x="-6" y="-1" width="12" height="8" rx="2" fill="var(--red)"/>
         <g transform="translate(-12,-5)" class="r-droprotor"><g class="rotor"><ellipse rx="9" ry="3" fill="rgba(255,255,255,.4)"/></g></g>
         <g transform="translate(12,-5)" class="r-droprotor"><g class="rotor"><ellipse rx="9" ry="3" fill="rgba(255,255,255,.4)"/></g></g></g>
       </g></g>
       <g class="r-off">
-        <rect x="170" y="150" width="80" height="56" rx="10" fill="rgba(255,90,110,.12)" stroke="var(--red)" stroke-width="2"/>
+        <rect x="170" y="150" width="80" height="56" rx="10" fill="rgba(255,61,97,.12)" stroke="var(--red)" stroke-width="2"/>
         <text x="210" y="185" text-anchor="middle" fill="var(--red)" font-size="18" font-weight="700" font-family="Consolas">OFF</text>
       </g>
     `,'按下 STOP → 停槳斷電')}
   </svg>`});
 
 S.push({label:'8 速度三段', part:'功能鍵', name:'速度切換(右下梯形)', cmd:'1聲最慢.3聲最快', dur:17,
-  lines:[[0,'右下方梯形:速度切換鍵,共三段'],[4.5,'一聲——最慢;兩聲——中速;三聲——最快'],
-    [9,'新手從一段開始,比賽再用三段'],[12.5,'這顆也能切換六顆尾燈的顏色']],
+  lines:[[0,'右下角梯形是速度切換鍵,有三段'],[4.5,'嗶一聲最慢,兩聲中速,三聲最快'],
+    [9,'新手先用一段,比賽再用三段就好'],[12.5,'這顆也能切換六顆尾燈的顏色']],
   steps:['按一下切換一段,聽提示音數','1 聲=最慢|2 聲=中速|3 聲=最快','同一顆鍵也可切換六顆尾燈顏色'],
   crit:['新手用一段練穩,再慢慢加速','比賽前確認檔位,不要用錯速度'],
   stage:`${BASE}
     ${ctrl('speed','','',10,40,.9)}
     ${pane(`
       <g font-family="Consolas" font-size="15" font-weight="700">
-        <g class="beep1"><rect x="30" y="70" width="66" height="34" rx="8" fill="rgba(79,227,163,.12)" stroke="var(--hud)" stroke-width="2"/>
+        <g class="beep1"><rect x="30" y="70" width="66" height="34" rx="8" fill="rgba(53,232,207,.12)" stroke="var(--hud)" stroke-width="2"/>
           <text x="63" y="93" text-anchor="middle" fill="var(--hud)">♪×1</text></g>
         <g class="beep2"><rect x="106" y="70" width="66" height="34" rx="8" fill="rgba(255,209,102,.12)" stroke="var(--gold)" stroke-width="2"/>
           <text x="139" y="93" text-anchor="middle" fill="var(--gold)">♪×2</text></g>
-        <g class="beep3"><rect x="182" y="70" width="66" height="34" rx="8" fill="rgba(255,90,110,.12)" stroke="var(--red)" stroke-width="2"/>
+        <g class="beep3"><rect x="182" y="70" width="66" height="34" rx="8" fill="rgba(255,61,97,.12)" stroke="var(--red)" stroke-width="2"/>
           <text x="215" y="93" text-anchor="middle" fill="var(--red)">♪×3</text></g>
       </g>
       <text x="63" y="124" text-anchor="middle" class="klbl">最慢</text>
@@ -478,8 +507,8 @@ S.push({label:'8 速度三段', part:'功能鍵', name:'速度切換(右下梯�
   </svg>`});
 
 S.push({label:'9 燈色', part:'功能鍵', name:'環裝燈色(左下梯形)', cmd:'燈色=分隊識別', dur:14,
-  lines:[[0,'左下方梯形:更換環裝燈的顏色'],[4,'比賽時用燈色分隊:藍隊、紅隊'],
-    [8,'選好顏色,才不會踢錯球門!']],
+  lines:[[0,'左下角梯形,是用來換環裝燈顏色'],[4,'比賽時用顏色分隊,藍隊或是紅隊'],
+    [8,'選好顏色,才不會踢錯球門喔']],
   steps:['按一下換一種環裝燈顏色','開賽前全隊統一燈色'],
   crit:['燈色=隊伍識別,別和對手同色','搭配速度鍵可換六顆尾燈顏色'],
   stage:`${BASE}
@@ -492,9 +521,9 @@ S.push({label:'9 燈色', part:'功能鍵', name:'環裝燈色(左下梯形)', c
   </svg>`});
 
 S.push({label:'10 完整流程', part:'總演練', name:'完整流程.跟著做一次', cmd:'開機→對頻→起飛→斷電', dur:23,
-  lines:[[0,'完整流程,跟著做一次!'],[3,'① 開飛機 → ② 開遙控器,按對頻點'],
-    [8,'③ 確認定高鈕長開 → ④ 按啟動鈕'],[12.5,'⑤ 左桿上推起飛 → 完成任務'],
-    [16,'⑥ 降落 → 緊急關閉鈕斷電'],[19,'遊戲結束前,遙控器不關機!']],
+  lines:[[0,'整個流程,跟著我做一次'],[3,'先開飛機,再開遙控器按對頻點'],
+    [8,'確認定高鈕長開,接著按啟動鈕'],[12.5,'左桿上推起飛,去完成任務'],
+    [16,'降落之後,按緊急關閉鈕斷電'],[19,'遊戲結束前,遙控器不要關機']],
   steps:['開飛機 → 開遙控器 → 對頻','定高長開 → 啟動 → 起飛','任務 → 降落 → 斷電'],
   crit:['順序記熟,安全有保障','關機鈕:遊戲全部結束才按'],
   stage:`${BASE}
@@ -506,7 +535,7 @@ S.push({label:'10 完整流程', part:'總演練', name:'完整流程.跟著做�
       </g>
       ${paneGround.replace('y1="262"','y1="262"')}
       <g transform="translate(210,252)"><g class="mv f-drone">
-        <g><circle r="22" fill="rgba(90,167,255,.10)" stroke="var(--blue)" stroke-width="2.5"/>
+        <g><circle r="22" fill="rgba(47,125,255,.10)" stroke="var(--blue)" stroke-width="2.5"/>
         <line x1="-14" y1="5" x2="14" y2="5" stroke="#9fb3cc" stroke-width="3"/>
         <rect x="-5" y="-1" width="10" height="7" rx="2" fill="var(--blue)"/>
         <g transform="translate(-10,-4)" class="f-rotor"><g class="rotor"><ellipse rx="8" ry="2.5" fill="rgba(255,255,255,.4)"/></g></g>
@@ -516,8 +545,8 @@ S.push({label:'10 完整流程', part:'總演練', name:'完整流程.跟著做�
   </svg>`});
 
 S.push({label:'結', part:'結語', name:'安全守則', cmd:'安全第一', dur:15,
-  lines:[[0,'安全三守則:先檢查、再起飛'],[4,'人不站在航線上;落地立刻斷電'],
-    [8.5,'拿起遙控器,進場練習吧!']],
+  lines:[[0,'安全三守則,先檢查再起飛'],[4,'人不站在航線上,落地立刻斷電'],
+    [8.5,'拿起遙控器,我們進場練習吧']],
   steps:['起飛前:電量、定高鈕、環境檢查','飛行中:人不站航線上','降落後:1 秒內斷電'],
   crit:['安全・責任・團隊合作','搭配「十題流程拆解」影片一起練!'],
   stage:`${BASE}
@@ -538,7 +567,7 @@ const stage=document.getElementById('stage'), subtitle=document.getElementById('
   voicebtn=document.getElementById('voicebtn');
 
 let idx=0,t=0,lineIdx=-1,playing=false,voice=true,started=false,raf=null,last=0;
-let rate=parseFloat(localStorage.getItem('droneVidRate')||'0.9');
+let rate=parseFloat(localStorage.getItem('droneVidRate')||'1.0');
 let voiceName=localStorage.getItem('droneVidVoice')||'';
 const total=S.reduce((a,s)=>a+s.dur,0);
 
@@ -552,16 +581,150 @@ S.forEach((s,i)=>{
 const chips=[...chipsEl.children], segs=[...tlEl.children];
 
 function fmt(x){x=Math.max(0,Math.round(x));return Math.floor(x/60)+':'+String(x%60).padStart(2,'0')}
-function zhVoice(){const v=speechSynthesis.getVoices();
-  return v.find(x=>/zh[-_]TW/i.test(x.lang))||v.find(x=>/^zh/i.test(x.lang))||null}
+
+/* ══════════════════════════════════════════════════════════
+   自然語音引擎
+   整句直接丟給 speechSynthesis 是「機器人味」的主因。這裡做四件事:
+   1. 挑到系統裡最好的語音(神經網路語音 ≫ 舊版 SAPI 語音)
+   2. 把文字正規化成「唸得出來」的樣子(數字轉中文、符號拿掉)
+   3. 依標點切成語塊,塊與塊之間留換氣停頓
+   4. 每個語塊微調語速與音高,句尾放慢 —— 真人講話最明顯的特徵
+   ══════════════════════════════════════════════════════════ */
+
+/* 1. 語音品質排序 ------------------------------------------------ */
+/* Windows 的「…Online」是 Edge 神經網路語音(HsiaoChen/HsiaoYu/YunJhe),
+   Chrome 的「Google 國語」也是雲端語音;舊版 SAPI(Hanhan/Zhiwei/Yaoyao)
+   合成感很重,同樣一句話聽起來差一個世代。 */
+function voiceScore(v){
+  if(!/^zh/i.test(v.lang))return -1;
+  let s=0;
+  if(/zh[-_]TW/i.test(v.lang))s+=200;
+  else if(/zh[-_](HK|MO|Hant)/i.test(v.lang))s+=130;
+  else s+=100;
+  if(/Online|Natural|Neural/i.test(v.name))s+=100;
+  if(/HsiaoChen|HsiaoYu|YunJhe|Yating|Meijia/i.test(v.name))s+=40;
+  if(/Google/i.test(v.name))s+=60;
+  if(v.localService===false)s+=30;
+  if(/Hanhan|Zhiwei|Yaoyao|Kangkang|Tracy|Sinji/i.test(v.name))s-=60;
+  return s;
+}
+function rankedVoices(){
+  return speechSynthesis.getVoices().map(v=>({v,s:voiceScore(v)}))
+    .filter(x=>x.s>=0).sort((a,b)=>b.s-a.s);
+}
+function bestVoice(){const r=rankedVoices();return r.length?r[0].v:null}
+
+/* 2. 文字正規化 -------------------------------------------------- */
+const CN=['零','一','二','三','四','五','六','七','八','九'];
+function cnNum(n){
+  n=parseInt(n,10); if(isNaN(n))return '';
+  if(n<10)return CN[n];
+  if(n<20)return n===10?'十':'十'+CN[n%10];
+  if(n<100){const t=CN[Math.floor(n/10)]+'十'; return n%10?t+CN[n%10]:t}
+  return String(n).split('').map(d=>CN[+d]).join('');   /* 百以上逐位唸,課程內容用不到大數 */
+}
+/* 含小數的數字:1.5 → 一點五 */
+function cnNumber(s){
+  s=String(s);
+  if(s.indexOf('.')<0)return cnNum(s);
+  const p=s.split('.');
+  return cnNum(p[0])+'點'+p[1].split('').map(d=>CN[+d]).join('');
+}
+const CIRCLED='①②③④⑤⑥⑦⑧⑨⑩';
+function normalize(t){
+  return t
+    .replace(/[⚽🕹🔊◉▭◺◿⏻▸✓]/g,'')
+    .replace(/[「」『』]/g,'')
+    .replace(/[（(]([^）)]*)[）)]/g,'')                    /* 括號內是給眼睛看的註解,不唸 */
+    .replace(new RegExp('['+CIRCLED+']','g'),m=>'第'+CN[CIRCLED.indexOf(m)+1]+'步,')
+    .replace(/[—–－]+/g,',')
+    .replace(/\s*[→←↑↓]\s*/g,',')
+    /* 單位要在小數轉換之前處理,否則 1.5m 會變成「一點五m」把 m 留在原地 */
+    .replace(/(\d+)\s*[×xX✕]\s*(\d+)\s*m\b/g,(m,a,b)=>cnNum(a)+'乘'+cnNum(b)+'公尺')
+    .replace(/(\d+(?:\.\d+)?)\s*cm\b/gi,(m,d)=>cnNumber(d)+'公分')
+    .replace(/(\d+(?:\.\d+)?)\s*m\b/gi,(m,d)=>cnNumber(d)+'公尺')
+    .replace(/第\s*(\d+)\s*(題|關|段|步)/g,(m,d,u)=>'第'+cnNum(d)+u)
+    .replace(/(\d+(?:\.\d+)?)\s*(度|秒|次|顆|公分|公尺|分鐘|字)/g,(m,d,u)=>cnNumber(d)+u)
+    .replace(/[×✕]/g,'乘')
+    .replace(/Mode\s*2/gi,'模式二')
+    /* 這幾個英文詞在旁白裡後面都已經跟著中文說法,直接拿掉免得唸兩次 */
+    .replace(/\b(Disarm|Arm|Hover|Throttle|Aileron|Elevator|Rudder)\b/gi,'')
+    .replace(/\bRoll\b/gi,'側飛').replace(/\bYaw\b/gi,'旋轉').replace(/\bPitch\b/gi,'前後')
+    .replace(/\d+(?:\.\d+)?/g,m=>cnNumber(m))           /* 沒被上面單位規則吃到的孤立數字 */
+    .replace(/[;；]/g,'。')
+    .replace(/\s+/g,'')
+    .trim();
+}
+
+/* 3. 依標點切語塊,標註每塊之後的換氣長度(毫秒) -------------------- */
+const PAUSE={'，':190,',':190,'、':140,'：':260,':':260,'。':340,'.':340,'!':300,'！':300,'?':330,'？':330};
+function chunk(t){
+  const rough=[]; let buf='';
+  for(const ch of t){
+    if(PAUSE[ch]!=null){ if(buf)rough.push({txt:buf,pause:PAUSE[ch]}); buf=''; }
+    else buf+=ch;
+  }
+  if(buf)rough.push({txt:buf,pause:0});
+  /* 超過 16 字又沒有標點的語塊,補一個換氣點,免得一口氣唸完聽起來喘不過氣。
+     斷點不能硬切在中間 —— 那會把「天穹/足球」這種詞切開,反而更不像人在講話。
+     所以在中點附近找一個虛詞或連接詞當開頭,從那裡斷。 */
+  const HINT='就是要會跟和把用在有可能才也都再先然後接著這那如果因為';
+  const out=[];
+  for(const c of rough){
+    if(c.txt.length<=16){out.push(c);continue}
+    const mid=Math.round(c.txt.length/2);
+    let cut=mid;
+    outer:for(let d=0;d<=4;d++){
+      for(const p of [mid-d,mid+d]){
+        if(p<4||p>c.txt.length-4)continue;
+        if(HINT.indexOf(c.txt[p])>=0){cut=p;break outer}
+      }
+    }
+    out.push({txt:c.txt.slice(0,cut),pause:110});
+    out.push({txt:c.txt.slice(cut),pause:c.pause});
+  }
+  return out;
+}
+
+/* 4. 韻律:由文字內容決定的固定抖動 ------------------------------ */
+/* 用內容 hash 而非亂數 —— 每句聽起來都不一樣,但同一句每次播放都一致,
+   不會出現「重播同一句卻換了個語氣」的怪異感。 */
+function jitter(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return ((h>>>0)%1000)/1000-.5}
+const EMPH=/注意|記得|千萬|立刻|一定要|不要|危險|重要|小心|絕對/;
+
+let speakToken=0;
 function speak(txt){
-  if(!voice||!('speechSynthesis' in window))return;
+  if(!('speechSynthesis' in window))return;
+  speakToken++;
   speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(txt.replace(/[——]/g,',').replace(/[⚽!!]/g,'。'));
-  const vs=speechSynthesis.getVoices();
-  const v=vs.find(x=>x.name===voiceName)||zhVoice();
-  if(v)u.voice=v; u.lang='zh-TW'; u.rate=rate;
-  speechSynthesis.speak(u);
+  if(!voice)return;
+  const parts=chunk(normalize(txt));
+  if(!parts.length)return;
+  const v=speechSynthesis.getVoices().find(x=>x.name===voiceName)||bestVoice();
+  const my=speakToken;
+  let i=0;
+  (function next(){
+    if(my!==speakToken||i>=parts.length)return;
+    const p=parts[i++], isLast=(i===parts.length);
+    const u=new SpeechSynthesisUtterance(p.txt);
+    if(v)u.voice=v;
+    u.lang='zh-TW';
+    const j=jitter(p.txt);
+    let r=rate*(1+j*.06);           /* ±3% 語速抖動 */
+    /* ±4% 音高抖動,基準略低於 1 避免「播報腔」。
+       註:部分雲端神經語音會忽略 pitch,此時仍靠語速與換氣撐起自然度。 */
+    let pit=.98+j*.08;
+    /* 句尾收慢 —— 只在句子有兩塊以上時才做,單塊句子沒有對比可言,放慢只會整句拖沓 */
+    if(isLast&&parts.length>1)r*=.93;
+    if(EMPH.test(p.txt)){r*=.9; pit+=.06}
+    if(/[嗎呢吧喔囉]$/.test(p.txt))pit+=.07;   /* 語尾助詞上揚 */
+    u.rate=Math.max(.5,Math.min(1.6,r));
+    u.pitch=Math.max(.6,Math.min(1.4,pit));
+    u.onend=()=>{ if(my!==speakToken)return;
+      p.pause?setTimeout(next,p.pause/Math.max(.6,rate)):next(); };
+    u.onerror=()=>{ if(my===speakToken)next() };
+    speechSynthesis.speak(u);
+  })();
 }
 function setPausedVisual(p){
   stage.classList.toggle('paused',p);
@@ -592,7 +755,7 @@ function updateHUD(){
 function loop(ts){
   if(!playing)return;
   const dt=Math.min(.1,(ts-last)/1000);last=ts;
-  t+=dt*(voice?rate/1.05:1); /* 語速慢,影片節奏跟著放慢 */
+  t+=dt*(voice?rate/1.2:1); /* 旁白現在會分塊換氣,唸完一句比較久,影片節奏跟著放慢 */
   if(t>=S[idx].dur){
     if(idx<S.length-1){enter(idx+1);}
     else{togglePlay(false);t=S[idx].dur;updateHUD();return;}
@@ -631,10 +794,14 @@ rateEl.oninput=()=>{rate=parseFloat(rateEl.value);showRate();localStorage.setIte
 rateEl.onchange=()=>{if(lineIdx>=0&&voice&&playing)speak(S[idx].lines[lineIdx][1]);};
 function popVoices(){
   if(!('speechSynthesis' in window))return;
-  const vs=speechSynthesis.getVoices().filter(x=>/^zh/i.test(x.lang));
-  vsel.innerHTML='<option value="">自動(中文)</option>'+
-    vs.map(x=>`<option value="${x.name}">${x.name.replace(/^(Microsoft|Google|Apple)\s*/i,'').replace(/[((].*$/,'')}</option>`).join('');
-  vsel.value=vs.some(x=>x.name===voiceName)?voiceName:'';
+  const ranked=rankedVoices();
+  const bestName=ranked.length?ranked[0].v.name:'';
+  vsel.innerHTML='<option value="">自動挑最自然的</option>'+
+    ranked.map(({v})=>{
+      const nm=v.name.replace(/^(Microsoft|Google|Apple)\s*/i,'').replace(/[((].*$/,'').trim();
+      return `<option value="${v.name}">${nm}${v.name===bestName?' ★':''}</option>`;
+    }).join('');
+  vsel.value=ranked.some(x=>x.v.name===voiceName)?voiceName:'';
 }
 vsel.onchange=()=>{voiceName=vsel.value;localStorage.setItem('droneVidVoice',voiceName);
   if(lineIdx>=0&&voice&&playing)speak(S[idx].lines[lineIdx][1]);};
