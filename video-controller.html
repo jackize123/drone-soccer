@@ -657,7 +657,9 @@ function normalize(t){
   let s=t
     .replace(/[⚽🕹🔊◉▭◺◿⏻▸✓]/g,'')
     .replace(/[「」『』]/g,'')
-    .replace(/[（(]([^）)]*)[）)]/g,'')                    /* 括號內是給眼睛看的註解,不唸 */
+    /* 括號裡放的是英文代號(Pitch)(Roll)(Figure-8)就不唸;放的是中文就是重要
+       資訊,要唸出來(例如「正方形航路(模擬考照)」的模擬考照),改成逗號銜接。 */
+    .replace(/[（(]([^）)]*)[）)]/g,(m,inner)=>/[一-鿿]/.test(inner)?','+inner:'')
     .replace(new RegExp('['+CIRCLED+']','g'),m=>'第'+CN[CIRCLED.indexOf(m)+1]+'步,')
     .replace(/[—–－]+/g,',')
     .replace(/\s*[→←↑↓]\s*/g,',')
@@ -699,7 +701,7 @@ function jitter(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0
 const EMPH=/注意|記得|千萬|立刻|一定要|不要|危險|重要|小心|絕對/;
 
 let speaking=false;      /* 目前是否還有旁白在唸 */
-let holdSince=0;         /* 時間軸為了等旁白唸完而停住的起點 */
+let speakDeadline=0;     /* 這句最晚該唸完的時間,見 loop() 的保險閥 */
 /* force=true 用於試聽:即使旁白關閉也會唸,而且不會讓時間軸為它等待 */
 function speak(txt,force){
   if(!('speechSynthesis' in window))return;
@@ -726,6 +728,12 @@ function speak(txt,force){
     u.onend=()=>{speaking=false};
     u.onerror=()=>{speaking=false};
     speaking=true;
+    /* 保險閥的期限。不能用固定秒數 —— 語速拉到最慢時,長句要唸 10 秒以上,
+       固定 8 秒會誤判成「引擎卡住」而放行,下一句的 cancel() 就把它砍斷,
+       聽起來就是少字。這裡依字數與語速估算,再放寬將近一倍。
+       係數由實測擬合:起手 1.1 秒 + 每字 0.19 秒 + 每個標點 0.22 秒。 */
+    const 預估=(1100+t.length*193+(t.match(/[,，、。!！?？]/g)||[]).length*221)/Math.max(.4,u.rate);
+    speakDeadline=performance.now()+預估*1.8+1500;
   }
   speechSynthesis.speak(u);
 }
@@ -771,12 +779,9 @@ function loop(ts){
      等發現越過切句點時 updateHUD 已經把上一句 cancel 掉了。 */
   const willBe=t+dt*(voice?rate/1.15:1);
   let hold=voice&&speaking&&(willBe>=nextAt||willBe>=s.dur);
-  if(hold){
-    if(!holdSince)holdSince=ts;
-    /* 保險閥:語音引擎偶爾不會回報唸完(Chrome 的已知問題),沒有上限的話
-       整支影片會永遠停在這一句。最多等 8 秒就放行。 */
-    if(ts-holdSince>8000){speaking=false;holdSince=0;hold=false}
-  }else holdSince=0;
+  /* 保險閥:語音引擎偶爾不會回報唸完(Chrome 的已知問題),沒有上限的話整支
+     影片會永遠停在這一句。期限在 speak() 時依這句的字數與語速估好。 */
+  if(hold&&performance.now()>speakDeadline){speaking=false;hold=false}
   if(!hold){
     t=willBe;
     if(t>=s.dur){
