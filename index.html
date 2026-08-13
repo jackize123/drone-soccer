@@ -214,8 +214,9 @@ h1 .sub{
 .band-head p{color:var(--ink-mid); font-size:.89rem; margin:0; line-height:1.85; max-width:40em}
 
 /* ── 介面選擇 ── */
-.decks{display:grid; grid-template-columns:1fr 1fr; gap:16px}
-@media (max-width:760px){ .decks{grid-template-columns:1fr} }
+.decks{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+@media (max-width:1000px){ .decks{grid-template-columns:1fr 1fr} }
+@media (max-width:680px){ .decks{grid-template-columns:1fr} }
 .card{
   position:relative; display:flex; flex-direction:column; text-decoration:none; color:inherit;
   background:linear-gradient(180deg,var(--riser),var(--deck));
@@ -232,6 +233,39 @@ h1 .sub{
 .card.b{--accentc:var(--blue)}
 .card.r{--accentc:var(--red)}
 .card.g{--accentc:var(--led)}
+.card.y{--accentc:#ffd166}
+
+/* ── 遊戲區:性質跟術科訓練不同,給它一張橫幅卡 ── */
+.quest{
+  position:relative; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:26px;
+  align-items:center; text-decoration:none; color:inherit; overflow:hidden;
+  border:1px solid rgba(255,209,102,.3); border-radius:5px; padding:30px 32px;
+  background:
+    radial-gradient(70% 130% at 88% 50%, rgba(255,209,102,.10), transparent 70%),
+    linear-gradient(180deg,var(--riser),var(--deck));
+  transition:transform .2s cubic-bezier(.2,.8,.3,1), border-color .2s;
+}
+.quest:hover{transform:translateY(-4px); border-color:#ffd166}
+.quest::after{
+  content:""; position:absolute; left:0; right:0; top:0; height:2px;
+  background:linear-gradient(90deg,#ffd166,transparent 78%); opacity:.6; transition:opacity .2s;
+}
+.quest:hover::after{opacity:1}
+.quest h3{font-family:var(--display); font-weight:800; font-stretch:108%; font-size:1.32rem; margin:.5em 0 .35em}
+.quest p{color:var(--ink-mid); font-size:.87rem; line-height:1.85; margin:0 0 16px; max-width:52em}
+.quest .go{
+  display:inline-flex; align-items:center; gap:.6em; font-family:var(--display);
+  font-weight:800; font-size:.9rem; color:#ffd166;
+}
+.quest .go .arw{font-family:var(--mono); font-weight:400; transition:transform .18s}
+.quest:hover .go .arw{transform:translateX(5px)}
+/* 由南到北的行程刻度 —— 這是這款遊戲真正的結構,不是裝飾 */
+.route{display:flex; align-items:center; gap:9px; font-family:var(--mono); font-size:.62rem;
+  letter-spacing:.14em; color:var(--ink-low); white-space:nowrap}
+.route i{width:6px; height:6px; border-radius:50%; background:#3a4a5f; display:block}
+.route i.on{background:#ffd166; box-shadow:0 0 8px rgba(255,209,102,.7)}
+.route .ln{width:22px; height:1px; background:#2a3a4d; display:block}
+@media (max-width:820px){ .quest{grid-template-columns:1fr} .quest .route{display:none} }
 .card .slot{
   font-family:var(--mono); font-size:.63rem; letter-spacing:.22em; color:var(--ink-low);
   display:flex; align-items:center; gap:8px;
@@ -340,6 +374,7 @@ footer .sig{font-family:var(--mono); font-size:.64rem; letter-spacing:.2em; colo
     <a class="barlink" href="#decks">選擇介面</a>
     <a class="barlink" href="#drills">十關賽程</a>
     <a class="barlink" href="#films">教學錄影</a>
+    <a class="barlink" href="#quest">遊戲區</a>
   </div>
 </div>
 
@@ -487,6 +522,13 @@ footer .sig{font-family:var(--mono); font-size:.64rem; letter-spacing:.2em; colo
         <div class="specs"><span>DualSense</span><span>Mode 2</span><span>類比搖桿</span><span>藍牙</span></div>
         <span class="go">開始訓練 <span class="arw">→</span></span>
       </a>
+      <a class="card g" href="3d.html">
+        <span class="slot"><em>DECK C</em> · 立體場地</span>
+        <h3>3D 立體訓練場</h3>
+        <p>同樣十關,搬進立體場地飛:懸停光柱、走廊環、煞車區、擋球守門。另有自由飛行的穿環計時與射門。</p>
+        <div class="specs"><span>3D 場地</span><span>穿環計時</span><span>射門</span><span>三種操作</span></div>
+        <span class="go">起飛 <span class="arw">→</span></span>
+      </a>
     </div>
   </div>
 </section>
@@ -560,6 +602,30 @@ footer .sig{font-family:var(--mono); font-size:.64rem; letter-spacing:.2em; colo
         </div>
       </a>
     </div>
+  </div>
+</section>
+
+<!-- ══════════ 遊戲區 ══════════ -->
+<section class="band" id="quest">
+  <div class="shell">
+    <div class="band-head">
+      <span class="tag">GAME ZONE</span>
+      <div class="row">
+        <h2>飛完術科,換個方式玩</h2>
+        <p>把操控練熟之後的延伸關卡。飛法一樣,但目標從評分變成闖關。</p>
+      </div>
+    </div>
+    <a class="quest" href="stars3d.html">
+      <div>
+        <span class="slot" style="color:var(--ink-low)"><em style="color:#ffd166;font-style:normal">3D 闖關</em> · 10 站 · 逐站解鎖</span>
+        <h3>星星大冒險・日本之旅</h3>
+        <p>開無人機由南到北飛越日本十個縣市,沿路吃星星闖關:沖繩守禮門、櫻島火山、熊本城、嚴島神社大鳥居、道頓堀霓虹、千本鳥居、富士山櫻花、東京鐵塔、青森蘋果園、札幌雪祭。過關看一則當地豆知識,邊玩邊認識日本。</p>
+        <span class="go">從沖繩起飛 <span class="arw">→</span></span>
+      </div>
+      <div class="route">
+        沖繩<i class="on"></i><span class="ln"></span><i></i><span class="ln"></span><i></i><span class="ln"></span><i></i><span class="ln"></span><i></i>北海道
+      </div>
+    </a>
   </div>
 </section>
 

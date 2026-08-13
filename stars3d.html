@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>星星大冒險・日本之旅|無人機 3D 遊戲</title>
+<style>
+:root{
+  --hud:#4fe3a3; --accent:#ff8a3c; --red:#ff5a6e; --gold:#ffd166; --line:#22304a;
+  --txt:#e8eef7; --dim:#8fa3bf;
+  --mono:Consolas,"Cascadia Mono",monospace;
+  --cjk:"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#0b1220;
+  font-family:var(--cjk);color:var(--txt);touch-action:none;overscroll-behavior:none}
+#c{position:fixed;inset:0;display:block}
+.topbar{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;gap:8px;
+  padding:10px 12px;flex-wrap:wrap;z-index:5}
+.pill{background:rgba(13,21,38,.85);border:1px solid var(--line);border-radius:999px;
+  padding:7px 13px;font-size:13px;color:var(--txt);text-decoration:none;line-height:1;
+  font-family:var(--cjk);cursor:pointer}
+a.pill:hover,button.pill:hover{border-color:var(--gold)}
+.title{font-weight:800;font-size:14px;cursor:default}
+.hudrow{position:fixed;top:54px;left:12px;display:flex;flex-direction:column;gap:6px;z-index:5;pointer-events:none}
+.stat{background:rgba(13,21,38,.85);border:1px solid var(--line);border-radius:10px;
+  padding:6px 12px;font-family:var(--mono);font-size:14px;min-width:130px}
+.stat b{color:var(--gold);font-weight:400}
+.combo{position:fixed;top:54px;right:12px;z-index:5;pointer-events:none;
+  background:rgba(13,21,38,.85);border:1px solid var(--accent);color:var(--accent);
+  border-radius:12px;padding:8px 16px;font-size:18px;font-weight:900;opacity:0;transition:.2s;
+  transform:scale(.8)}
+.combo.show{opacity:1;transform:scale(1)}
+.toast{position:fixed;top:22%;left:50%;transform:translateX(-50%);z-index:6;
+  background:rgba(13,21,38,.92);border:1px solid var(--gold);color:var(--gold);
+  border-radius:12px;padding:9px 20px;font-size:19px;font-weight:800;opacity:0;
+  transition:opacity .2s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.count{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  z-index:9;pointer-events:none;font-size:min(30vw,150px);font-weight:900;color:var(--gold);
+  text-shadow:0 0 40px rgba(255,209,102,.6);font-family:var(--mono)}
+.prog{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:5;
+  color:#ffeebf;font-size:14px;font-weight:700;text-align:center;pointer-events:none;
+  background:rgba(11,18,32,.78);border:1px solid rgba(255,209,102,.4);
+  padding:7px 18px;border-radius:999px;white-space:nowrap;max-width:94vw;overflow:hidden;text-overflow:ellipsis}
+.stick{position:fixed;bottom:26px;width:132px;height:132px;border-radius:50%;z-index:7;
+  background:rgba(13,21,38,.5);border:2px solid rgba(255,209,102,.4);display:none}
+.stick .nub{position:absolute;left:50%;top:50%;width:56px;height:56px;border-radius:50%;
+  background:rgba(255,209,102,.3);border:2px solid var(--gold);transform:translate(-50%,-50%)}
+.stick .tag{position:absolute;top:-22px;left:50%;transform:translateX(-50%);
+  font-size:11px;color:var(--dim);white-space:nowrap}
+#stickL{left:22px}#stickR{right:22px}
+body.touchmode .stick{display:block}
+.ovl{position:fixed;inset:0;z-index:10;background:rgba(7,11,20,.86);
+  display:flex;align-items:center;justify-content:center;padding:16px}
+.panel{background:#111927;border:1px solid var(--line);border-radius:18px;
+  padding:22px 24px;max-width:620px;width:100%;max-height:90vh;overflow:auto}
+.panel h1{margin:0 0 4px;font-size:22px}
+.panel h1 .em{color:var(--gold)}
+.panel p{color:var(--dim);font-size:13px;line-height:1.8;margin:8px 0}
+.panel .route{font-size:12px;color:var(--accent);font-weight:700;letter-spacing:.5px}
+.panel .keys{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin:10px 0;font-size:12px}
+@media(max-width:520px){.panel .keys{grid-template-columns:1fr}}
+.panel .keys div{background:#0d1520;border:1px solid var(--line);border-radius:10px;padding:8px 10px;line-height:1.7}
+.panel .keys b{color:var(--gold);font-family:var(--mono);font-weight:400}
+.lvgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:9px;margin-top:12px}
+.lvbtn{display:flex;flex-direction:column;gap:3px;text-align:left;
+  background:#0d1520;border:1px solid var(--line);border-radius:14px;
+  padding:11px 13px;color:var(--txt);cursor:pointer;font-family:var(--cjk);transition:.12s}
+.lvbtn:hover:not(.lock){border-color:var(--gold);transform:translateY(-2px)}
+.lvbtn.lock{opacity:.45;cursor:not-allowed}
+.lvbtn .nm{font-size:13.5px;font-weight:800}
+.lvbtn .nm .no{color:var(--accent);font-family:var(--mono);margin-right:5px}
+.lvbtn .sp{font-size:11px;color:var(--hud)}
+.lvbtn .st{font-size:15px;letter-spacing:2px;color:var(--gold)}
+.lvbtn .st .off{color:#2c3d5e}
+.lvbtn .bs{font-size:11px;color:var(--dim);font-family:var(--mono)}
+.go{display:inline-block;background:var(--gold);color:#221803;border:0;
+  border-radius:12px;padding:12px 20px;font-size:15px;font-weight:800;cursor:pointer;
+  font-family:var(--cjk);margin:4px 6px 0 0}
+.go.alt{background:#1b2740;color:var(--txt);border:1px solid var(--line)}
+.bigstars{font-size:52px;letter-spacing:8px;color:var(--gold);margin:8px 0}
+.bigstars .off{color:#2c3d5e}
+.fact{background:#0d1520;border:1px solid var(--line);border-radius:12px;
+  padding:12px 14px;font-size:13px;line-height:1.9;color:#d7e1f0;text-align:left;margin:10px 0}
+.fact b{color:var(--gold)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="topbar">
+  <a class="pill" href="index.html">← 首頁</a>
+  <span class="pill title">🗾 星星大冒險・日本之旅</span>
+  <button class="pill" id="menuBtn">🗺 選站</button>
+  <button class="pill" id="camBtn">📷 跟隨</button>
+  <button class="pill" id="resetBtn">↺ 重玩</button>
+</div>
+<div class="hudrow">
+  <div class="stat">⭐ <b id="got">0</b> / <b id="tot">0</b></div>
+  <div class="stat">⏱ <b id="tim">0.0</b> s</div>
+</div>
+<div class="combo" id="combo"></div>
+<div class="toast" id="toast"></div>
+<div class="count" id="count"></div>
+<div class="prog" id="prog"></div>
+
+<div class="stick" id="stickL"><span class="tag">升降・旋轉</span><div class="nub"></div></div>
+<div class="stick" id="stickR"><span class="tag">前後・平移</span><div class="nub"></div></div>
+
+<div class="ovl" id="menu">
+  <div class="panel">
+    <h1>🗾 星星大冒險 <span class="em">日本縱斷 10 站</span></h1>
+    <p class="route">沖繩 → 鹿兒島 → 熊本 → 廣島 → 大阪 → 京都 → 山梨 → 東京 → 青森 → 北海道</p>
+    <p>從日本最南端一路往北飛!每一站都有當地著名景點,吃光星星就能前往下一個縣市。飛得越快評價越高(★★★),過關還有<b style="color:var(--gold)">日本豆知識</b>!</p>
+    <div class="keys">
+      <div>⌨️ 鍵盤<br><b>W/S</b> 升降 <b>A/D</b> 旋轉<br><b>↑↓←→</b> 前後/平移</div>
+      <div>📱 觸控<br>左右虛擬搖桿<br>(和實機遙控器相同)</div>
+      <div>🎮 PS5 手把<br>雙搖桿同實機<br><b>OPTIONS</b> 重玩</div>
+    </div>
+    <button class="go hidden" id="resumeBtn" style="width:100%">▶ 繼續飛行</button>
+    <div class="lvgrid" id="lvgrid"></div>
+  </div>
+</div>
+
+<div class="ovl hidden" id="done">
+  <div class="panel" style="text-align:center">
+    <h1 id="doneTitle">🎉 過關!</h1>
+    <div class="bigstars" id="doneStars">★★★</div>
+    <p style="font-size:24px;color:var(--gold);font-family:var(--mono);margin:6px 0" id="doneTime">--</p>
+    <div class="fact" id="doneFact"></div>
+    <p id="doneSub" style="font-size:13px"></p>
+    <div>
+      <button class="go" id="nextBtn">前往下一站 →</button>
+      <button class="go alt" id="againBtn">再玩一次</button>
+      <button class="go alt" id="backBtn">地圖</button>
+    </div>
+  </div>
+</div>
+
+<script src="three.min.js"></script>
+<!-- 後製管線(Bloom/SSAO/FXAA…)已移除,相關 addon 檔留在 lib/ 供日後啟用,此處不載入以省手機流量 -->
+<script src="lib/three-addons/RGBELoader.js"></script>
+<script src="lib/three-addons/GLTFLoader.js"></script>
+<script>
+/* ================= renderer / scene ================= */
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.08;
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(62,1,.1,180);
+scene.add(new THREE.HemisphereLight(0x9fc4ff,0x14100a,1.0));
+const sun=new THREE.DirectionalLight(0xfff1d6,1.05);sun.position.set(-8,16,-4);
+sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);
+sun.shadow.camera.left=-16;sun.shadow.camera.right=16;sun.shadow.camera.top=22;sun.shadow.camera.bottom=-6;
+scene.add(sun);
+
+/* 畫質分級:依裝置能力退回較輕材質,確保手機/學校電腦能跑 */
+const lowPerf=(navigator.deviceMemory&&navigator.deviceMemory<=4)||/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+/* 註:先前的 Bloom/SSAO 後製會讓亮色關卡糊成白霧、遮住飛行路線,已移除。
+   改回原版乾淨的 renderer.render(),保留 PBR 材質/反射水面/HDRI 反射等不影響操作的強化。 */
+
+/* ================= 環境反射(IBL):從每關天空生成 envMap ================= */
+let pmrem=null,envRT=null,hdrEnv=null;
+if(!lowPerf){
+  pmrem=new THREE.PMREMGenerator(renderer);pmrem.compileEquirectangularShader();
+  /* 真 HDRI(CC0 Poly Haven)供日間關卡:更真實的天光反射 */
+  new THREE.RGBELoader().load('assets/hdri/clear_puresky_1k.hdr',tex=>{
+    tex.mapping=THREE.EquirectangularReflectionMapping;
+    const rt=pmrem.fromEquirectangular(tex);hdrEnv=rt.texture;tex.dispose();
+    const T=LEVELS[curLv]&&LEVELS[curLv].theme;if(T&&T.day)scene.environment=hdrEnv;
+  },undefined,e=>console.warn('HDRI load failed',e));
+}
+function applyEnv(T,skyTex){
+  if(lowPerf||!pmrem)return;
+  if(T.day&&hdrEnv){scene.environment=hdrEnv;return;} /* 日:真 HDRI 天光 */
+  if(envRT)envRT.dispose();                            /* 夜:程序天空 env */
+  envRT=pmrem.fromEquirectangular(skyTex);
+  scene.environment=envRT.texture;
+}
+
+function skyTex(top,bot){
+  const cv=document.createElement('canvas');cv.width=2;cv.height=256;
+  const g=cv.getContext('2d');const gr=g.createLinearGradient(0,0,0,256);
+  gr.addColorStop(0,top);gr.addColorStop(.72,bot);gr.addColorStop(1,bot);
+  g.fillStyle=gr;g.fillRect(0,0,2,256);
+  return new THREE.CanvasTexture(cv);
+}
+function glowTex(){
+  const cv=document.createElement('canvas');cv.width=cv.height=128;
+  const g=cv.getContext('2d');
+  const gr=g.createRadialGradient(64,64,4,64,64,62);
+  gr.addColorStop(0,'rgba(255,255,255,.95)');
+  gr.addColorStop(.35,'rgba(255,225,140,.5)');
+  gr.addColorStop(1,'rgba(255,225,140,0)');
+  g.fillStyle=gr;g.fillRect(0,0,128,128);
+  return new THREE.CanvasTexture(cv);
+}
+const GLOWTEX=glowTex();
+
+/* ===== 程序式 PBR 貼圖(canvas 生成,免外部檔案) ===== */
+function heightToNormal(src,strength){
+  const w=src.width,h=src.height,sd=src.getContext('2d').getImageData(0,0,w,h).data;
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+  const out=cv.getContext('2d').createImageData(w,h),o=out.data;
+  const at=(x,y)=>sd[((y+h)%h*w+(x+w)%w)*4];
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const dx=(at(x-1,y)-at(x+1,y))/255*strength;
+    const dy=(at(x,y-1)-at(x,y+1))/255*strength;
+    const l=Math.hypot(dx,dy,1),i=(y*w+x)*4;
+    o[i]=(dx/l*.5+.5)*255;o[i+1]=(dy/l*.5+.5)*255;o[i+2]=(1/l*.5+.5)*255;o[i+3]=255;
+  }
+  cv.getContext('2d').putImageData(out,0,0);
+  const t=new THREE.CanvasTexture(cv);t.wrapS=t.wrapT=THREE.RepeatWrapping;return t;
+}
+let _masonry=null;
+function masonryMaps(){
+  if(_masonry)return _masonry;
+  const N=256,cv=document.createElement('canvas');cv.width=cv.height=N;const g=cv.getContext('2d');
+  g.fillStyle='#8f8c85';g.fillRect(0,0,N,N);
+  const rows=8,rh=N/rows;
+  for(let r=0;r<rows;r++){const off=(r%2)*rh*.5,cols=6;
+    for(let c=-1;c<cols;c++){
+      const x=c*(N/cols)+off,y=r*rh,bw=N/cols-3,bh=rh-3;
+      const v=205+Math.random()*38|0;g.fillStyle=`rgb(${v},${v-6},${v-14})`;
+      g.fillRect(x+1.5,y+1.5,bw,bh);
+      g.fillStyle='rgba(60,54,46,.55)';g.fillRect(x+1.5,y+bh+.5,bw+3,3);g.fillRect(x+bw+.5,y+1.5,3,bh+3);
+    }}
+  const hcv=document.createElement('canvas');hcv.width=hcv.height=N;const hg=hcv.getContext('2d');
+  hg.drawImage(cv,0,0);
+  const map=new THREE.CanvasTexture(cv);map.wrapS=map.wrapT=THREE.RepeatWrapping;map.encoding=THREE.sRGBEncoding;
+  _masonry={map,normal:heightToNormal(hcv,2.2)};return _masonry;
+}
+let _groundN=null;
+function groundNormal(){
+  if(_groundN)return _groundN;
+  const N=128,cv=document.createElement('canvas');cv.width=cv.height=N;const g=cv.getContext('2d');
+  g.fillStyle='#808080';g.fillRect(0,0,N,N);
+  for(let i=0;i<2600;i++){const v=110+Math.random()*90|0;g.fillStyle=`rgb(${v},${v},${v})`;
+    g.fillRect(Math.random()*N|0,Math.random()*N|0,1,1);}
+  _groundN=heightToNormal(cv,.8);return _groundN;
+}
+function stoneMat(color){
+  if(lowPerf)return new THREE.MeshLambertMaterial({color});
+  const m=masonryMaps();
+  const mat=new THREE.MeshStandardMaterial({color,roughness:.94,metalness:.03,
+    map:m.map,normalMap:m.normal,envMapIntensity:.45});
+  mat.map.repeat.set(2,1);mat.normalMap.repeat.set(2,1);mat.normalScale.set(.7,.7);return mat;
+}
+
+/* ===== glb 寫實模型載入(GLTFLoader,含快取/關卡守衛/降級) ===== */
+const _gltf=(!lowPerf&&THREE.GLTFLoader)?new THREE.GLTFLoader():null;
+const _glbCache={};
+function loadGLB(url,onLoad){
+  if(!_gltf)return;
+  if(_glbCache[url]){onLoad(_glbCache[url].clone());return;}
+  _gltf.load(url,g=>{
+    g.scene.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+    _glbCache[url]=g.scene;onLoad(g.scene.clone());
+  },undefined,e=>console.warn('GLB load failed',url,e));
+}
+/* 寫實石頭:非低效能用 CC0 glb,低效能退回程序式 rock() */
+function glbRock(x,z,s){
+  if(!_gltf){rock(x,z);return;}
+  const lv=curLv;
+  collider(x,.55*(s||1.4),z,1.5*(s||1.4),1.1*(s||1.4),1.5*(s||1.4)); /* 立即設實體,不等模型載入 */
+  loadGLB('assets/models/boulder_01/boulder_01_1k.gltf',m=>{
+    if(curLv!==lv)return; /* 關卡已切換就丟棄 */
+    m.scale.setScalar(s||1.4);m.position.set(x,0,z);m.rotation.y=Math.random()*6.283;
+    levelGroup.add(m);
+  });
+}
+
+const floorMat=lowPerf?new THREE.MeshLambertMaterial({color:0x0d1520})
+  :new THREE.MeshStandardMaterial({color:0x0d1520,roughness:.94,metalness:.03,envMapIntensity:.35});
+if(!lowPerf){floorMat.normalMap=groundNormal();floorMat.normalMap.repeat.set(24,24);floorMat.normalScale.set(.45,.45);}
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(100,100),floorMat);
+floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+const panoramaTex=new THREE.TextureLoader().load('assets/scenery/japan-travel-panorama.png');
+panoramaTex.encoding=THREE.sRGBEncoding;
+panoramaTex.minFilter=THREE.LinearFilter;
+const panoramaMat=new THREE.MeshBasicMaterial({map:panoramaTex,color:0xffffff,fog:false});
+const panorama=new THREE.Mesh(new THREE.PlaneGeometry(108,43),panoramaMat);
+panorama.position.set(0,14,53);scene.add(panorama);
+let grid=null;
+function setGrid(hex){
+  if(grid)scene.remove(grid);
+  const dim=new THREE.Color(hex).multiplyScalar(.42).getHex();
+  grid=new THREE.GridHelper(48,48,hex,dim);grid.position.y=.012;
+  grid.material.transparent=true;grid.material.opacity=.11;scene.add(grid);
+}
+const mountMat=new THREE.MeshBasicMaterial({color:0x122b4a});
+const mounts=new THREE.Group();scene.add(mounts);
+{let seed=7;const rnd=()=>((seed=seed*16807%2147483647)/2147483647);
+ for(let i=0;i<18;i++){const a=i/18*Math.PI*2+rnd()*.2;
+  const r=27+rnd()*7,h=3.5+rnd()*7;
+  const m=new THREE.Mesh(new THREE.ConeGeometry(3+rnd()*3.5,h,5),mountMat);
+  m.position.set(Math.cos(a)*r,h/2-.3,Math.sin(a)*r+9);
+  m.rotation.y=rnd()*Math.PI;mounts.add(m);}}
+let bgStars;
+{const g=new THREE.BufferGeometry();const n=300;const a=new Float32Array(n*3);
+ for(let i=0;i<n;i++){a[i*3]=(Math.random()*2-1)*38;a[i*3+1]=6+Math.random()*22;a[i*3+2]=(Math.random()*2-1)*38;}
+ g.setAttribute('position',new THREE.BufferAttribute(a,3));
+ bgStars=new THREE.Points(g,new THREE.PointsMaterial({color:0xdfe9ff,size:.1,transparent:true,opacity:.85}));
+ scene.add(bgStars);}
+
+/* ================= drone ================= */
+const drone=new THREE.Group();
+const droneCageMat=new THREE.MeshBasicMaterial({color:0xffd166,wireframe:true,transparent:true,opacity:.9});
+drone.add(new THREE.Mesh(new THREE.SphereGeometry(.5,14,9),droneCageMat));
+drone.add(new THREE.Mesh(new THREE.BoxGeometry(.36,.1,.36),
+  new THREE.MeshLambertMaterial({color:0xf3f6fa})));
+const nose=new THREE.Mesh(new THREE.ConeGeometry(.1,.24,10),
+  new THREE.MeshLambertMaterial({color:0xff8a3c}));
+nose.rotation.x=Math.PI/2;nose.position.set(0,.02,.36);drone.add(nose);
+const props=[];
+for(const[x,z]of[[-.2,-.2],[.2,-.2],[-.2,.2],[.2,.2]]){
+  const pr=new THREE.Mesh(new THREE.BoxGeometry(.3,.015,.05),
+    new THREE.MeshBasicMaterial({color:0xbfd4ee,transparent:true,opacity:.8}));
+  pr.position.set(x,.1,z);drone.add(pr);props.push(pr);
+}
+const droneLight=new THREE.PointLight(0x6bb8ff,.7,7);
+droneLight.position.set(0,.3,0);drone.add(droneLight);
+scene.add(drone);
+const shadow=new THREE.Mesh(new THREE.CircleGeometry(.45,22),
+  new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.35,depthWrite:false}));
+shadow.rotation.x=-Math.PI/2;shadow.position.y=.02;scene.add(shadow);
+const trail=[];
+for(let i=0;i<14;i++){
+  const t=new THREE.Mesh(new THREE.SphereGeometry(.08*(1-i/16),6,5),
+    new THREE.MeshBasicMaterial({color:0xffd166,transparent:true,opacity:.5*(1-i/14),depthWrite:false}));
+  scene.add(t);trail.push(t);
+}
+
+/* ================= star / particles ================= */
+function starGeo(sc=1){
+  const s=new THREE.Shape();const R=.42*sc,r=.18*sc;
+  for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2;const rad=i%2?r:R;
+    const x=Math.cos(a)*rad,y=Math.sin(a)*rad;i?s.lineTo(x,y):s.moveTo(x,y);}
+  s.closePath();
+  return new THREE.ExtrudeGeometry(s,{depth:.12*sc,bevelEnabled:false});
+}
+const STARGEO=starGeo(),STARGEO_BIG=starGeo(2.2);
+const starMat=new THREE.MeshBasicMaterial({color:0xffd166});
+const parts=[];
+for(let i=0;i<46;i++){
+  const p=new THREE.Mesh(new THREE.OctahedronGeometry(.09),
+    new THREE.MeshBasicMaterial({color:0xffd166,transparent:true,opacity:0,depthWrite:false}));
+  p._v=new THREE.Vector3();p._life=0;scene.add(p);parts.push(p);
+}
+function burst(x,y,z,n=10,col=0xffd166){
+  let c=0;
+  for(const p of parts){if(p._life>0)continue;
+    p.position.set(x,y,z);p.material.color.setHex(col);
+    p._v.set((Math.random()*2-1)*3,(Math.random()*2)*2.2,(Math.random()*2-1)*3);
+    p._life=.8;p.material.opacity=1;
+    if(++c>=n)break;}
+}
+function updateParts(dt){
+  for(const p of parts){if(p._life<=0)continue;
+    p._life-=dt;p._v.y-=6*dt;
+    p.position.addScaledVector(p._v,dt);
+    p.material.opacity=Math.max(0,p._life/.8);
+    p.rotation.x+=dt*6;p.rotation.z+=dt*5;
+    if(p._life<=0)p.material.opacity=0;}
+}
+/* 環境粒子(雪/櫻花/火山灰) */
+const amb={pts:null,cfg:null};
+function setAmbient(cfg){
+  if(amb.pts){scene.remove(amb.pts);amb.pts=null;}
+  amb.cfg=cfg;if(!cfg)return;
+  const n=140,g=new THREE.BufferGeometry(),a=new Float32Array(n*3);
+  for(let i=0;i<n;i++){a[i*3]=(Math.random()*2-1)*15;a[i*3+1]=Math.random()*9;a[i*3+2]=-2+Math.random()*23;}
+  g.setAttribute('position',new THREE.BufferAttribute(a,3));
+  amb.pts=new THREE.Points(g,new THREE.PointsMaterial({color:cfg.color,size:cfg.size,
+    transparent:true,opacity:cfg.op||.85,depthWrite:false}));
+  scene.add(amb.pts);
+}
+function animAmbient(dt){
+  if(!amb.pts)return;
+  const p=amb.pts.geometry.attributes.position,c=amb.cfg;
+  for(let i=0;i<p.count;i++){
+    let y=p.getY(i)+c.vy*dt,x=p.getX(i)+(c.vx||0)*dt;
+    if(y<0)y=9;if(y>9)y=0;
+    if(x>15)x=-15;if(x<-15)x=15;
+    p.setY(i,y);p.setX(i,x);}
+  p.needsUpdate=true;
+}
+
+/* ================= audio ================= */
+let AC;function tone(f,d=.1,v=.13,type='square'){try{
+  AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+  const o=AC.createOscillator(),g=AC.createGain();
+  o.type=type;o.frequency.value=f;o.connect(g);g.connect(AC.destination);
+  g.gain.setValueAtTime(v,AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);
+  o.start();o.stop(AC.currentTime+d);}catch(e){}}
+function fanfare(){[523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,.22,.15,'triangle'),i*130));}
+
+/* ================= 景點積木 ================= */
+const levelGroup=new THREE.Group();scene.add(levelGroup);
+let walls=[],anims=[];
+/* PBR:能跑的裝置用 Standard 材質(吃環境反射/IBL),低效能退回 Lambert
+   envMapIntensity 壓低,避免 IBL 疊加光源把亮色關卡打成過曝 */
+const lamb=c=>lowPerf?new THREE.MeshLambertMaterial({color:c})
+  :new THREE.MeshStandardMaterial({color:c,roughness:.85,metalness:.05,envMapIntensity:.4});
+const metalMat=c=>lowPerf?new THREE.MeshBasicMaterial({color:c})
+  :new THREE.MeshStandardMaterial({color:c,roughness:.3,metalness:.92,envMapIntensity:.7});
+function scenicEnvironment(T,level){
+  const path=new THREE.Mesh(new THREE.PlaneGeometry(6.8,28),new THREE.MeshLambertMaterial({
+    color:T.day?0xd8c7a4:0x20233b,transparent:true,opacity:T.day?.42:.58}));
+  path.rotation.x=-Math.PI/2;path.position.set(0,.018,12);path.receiveShadow=true;levelGroup.add(path);
+
+  const orb=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOWTEX,
+    color:T.day?(level===6?0xffb7c9:0xffe2a3):0xdbe7ff,transparent:true,
+    opacity:T.day?.78:.52,blending:THREE.AdditiveBlending,depthWrite:false}));
+  orb.scale.setScalar(T.day?8:4);orb.position.set(level%2?-19:18,T.day?17:14,35);levelGroup.add(orb);
+
+  for(let i=0;i<(T.day?7:3);i++){
+    const cloud=new THREE.Group();
+    const cm=new THREE.MeshBasicMaterial({color:T.day?0xfffbf1:0x7582a8,transparent:true,opacity:T.day?.3:.12,depthWrite:false});
+    for(let j=0;j<4;j++){
+      const puff=new THREE.Mesh(new THREE.SphereGeometry(1.3+j%2*.45,10,6),cm);
+      puff.scale.y=.34;puff.position.set(j*1.25,Math.sin(j)*.18,0);cloud.add(puff);
+    }
+    cloud.position.set(-18+(i*7)%36,8+(i%3)*2.4,12+i*5);cloud.scale.setScalar(.75+(i%2)*.35);
+    levelGroup.add(cloud);anims.push(t=>{cloud.position.x=-22+((t*(.18+i*.018)+i*7)%44);});
+  }
+
+  if(!T.day){
+    for(const side of[-1,1])for(let z=4;z<21;z+=4){
+      const post=new THREE.Mesh(new THREE.CylinderGeometry(.035,.055,.7,7),lamb(0x38251d));
+      post.position.set(side*3.25,.35,z);levelGroup.add(post);
+      const lamp=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOWTEX,color:0xffb45e,transparent:true,
+        opacity:.65,blending:THREE.AdditiveBlending,depthWrite:false}));
+      lamp.scale.setScalar(.72);lamp.position.set(side*3.25,.82,z);levelGroup.add(lamp);
+    }
+  }
+}
+function torii(x,z,s=1,ry=0,color=0xd0342c){
+  const g=new THREE.Group(),m=lamb(color);
+  const p1=new THREE.Mesh(new THREE.CylinderGeometry(.09*s,.12*s,2.2*s,8),m);
+  p1.position.set(-.8*s,1.1*s,0);g.add(p1);
+  const p2=p1.clone();p2.position.x=.8*s;g.add(p2);
+  const t1=new THREE.Mesh(new THREE.BoxGeometry(2.4*s,.16*s,.3*s),m);t1.position.y=2.22*s;g.add(t1);
+  const t2=new THREE.Mesh(new THREE.BoxGeometry(1.95*s,.12*s,.22*s),m);t2.position.y=1.82*s;g.add(t2);
+  const cap=new THREE.Mesh(new THREE.BoxGeometry(2.6*s,.1*s,.38*s),lamb(0x26221f));
+  cap.position.y=2.34*s;g.add(cap);
+  for(const side of[-1,1]){
+    const end=new THREE.Mesh(new THREE.BoxGeometry(.42*s,.16*s,.42*s),m);
+    end.position.set(side*1.27*s,2.29*s,0);end.rotation.z=side*.16;g.add(end);
+  }
+  g.position.set(x,0,z);g.rotation.y=ry;levelGroup.add(g);
+  for(const ox of[-.8*s,.8*s]) /* 只擋兩根柱子,中間可穿過 */
+    collider(x+ox*Math.cos(ry),1.1*s,z-ox*Math.sin(ry),.32*s,2.2*s,.32*s);
+  return g;}
+function castle(x,z,s=1,wallC=0xf2ead8,roofC=0x3a5a46,style='generic'){
+  const g=new THREE.Group();
+  const cfg=style==='osaka'?{tiers:5,stone:0x77756f,dark:0x171c19,gold:true,wide:3.6}:
+    style==='kumamoto'?{tiers:4,stone:0x514e49,dark:0x17191b,gold:false,wide:3.45}:
+    style==='hirosaki'?{tiers:3,stone:0x777873,dark:0x25282b,gold:false,wide:3.15}:
+    {tiers:3,stone:0x6b6f78,dark:0x262b2e,gold:false,wide:3.3};
+  const stone=new THREE.Mesh(new THREE.CylinderGeometry(cfg.wide*s*.72,cfg.wide*s,1.35*s,4),stoneMat(cfg.stone));
+  stone.position.y=.675*s;stone.rotation.y=Math.PI/4;g.add(stone);
+  const stoneLip=new THREE.Mesh(new THREE.BoxGeometry(cfg.wide*1.42*s,.13*s,cfg.wide*1.42*s),lamb(0x8b8a83));
+  stoneLip.position.y=1.36*s;g.add(stoneLip);
+  let w=cfg.wide*s,y=1.4*s;
+  for(let i=0;i<cfg.tiers;i++){
+    const top=i===cfg.tiers-1;
+    const tierWall=(style==='kumamoto'&&i>0)||(style==='osaka'&&top)?cfg.dark:wallC;
+    const h=(top?.72:.62)*s;
+    const box=new THREE.Mesh(new THREE.BoxGeometry(w,h,w*.78),lamb(tierWall));
+    box.position.y=y+h/2;g.add(box);
+    const band=new THREE.Mesh(new THREE.BoxGeometry(w*1.04,.09*s,w*.82),lamb(cfg.dark));
+    band.position.y=y+h*.68;g.add(band);
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(w*.78,.43*s,4),lamb(roofC));
+    roof.position.y=y+h+.18*s;roof.rotation.y=Math.PI/4;roof.scale.z=.78;g.add(roof);
+    for(const side of[-1,1]){
+      const eave=new THREE.Mesh(new THREE.BoxGeometry(.32*s,.08*s,w*1.18),lamb(roofC));
+      eave.position.set(side*w*.53,y+h+.04*s,0);eave.rotation.z=side*.18;g.add(eave);
+    }
+    const slots=Math.max(3,6-i);
+    for(let k=0;k<slots;k++){
+      const win=new THREE.Mesh(new THREE.BoxGeometry(.11*s,.2*s,.025*s),new THREE.MeshBasicMaterial({color:0x11161a}));
+      win.position.set((k-(slots-1)/2)*w/(slots+1),y+h*.48,-w*.401);g.add(win);
+    }
+    y+=h+.44*s;w*=style==='osaka'?.83:.79;
+  }
+  if(cfg.gold){
+    for(const side of[-1,1]){
+      const shachi=new THREE.Mesh(new THREE.ConeGeometry(.08*s,.42*s,6),metalMat(0xd9a928));
+      shachi.position.set(side*w*.48,y+.08*s,0);shachi.rotation.z=side*.22;g.add(shachi);
+    }
+  }
+  const tip=new THREE.Mesh(new THREE.OctahedronGeometry(.14*s),cfg.gold?metalMat(0xffd166):lamb(0xe7e3d8));
+  tip.position.y=y+.18*s;g.add(tip);
+  g.position.set(x,0,z);levelGroup.add(g);
+  collider(x,y*.5,z,cfg.wide*s*1.05,y,cfg.wide*s*1.05); /* 城堡實體 */
+  return g;}
+function volcano(x,z){
+  const v=new THREE.Mesh(new THREE.ConeGeometry(13,9,7),lamb(0x4a2c24));
+  v.position.set(x,4.5,z);levelGroup.add(v);
+  const crater=new THREE.Mesh(new THREE.CylinderGeometry(2.4,3.4,1.1,7),lamb(0x2a1812));
+  crater.position.set(x,9,z);levelGroup.add(crater);
+  const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOWTEX,color:0xff6a2a,
+    transparent:true,opacity:.7,blending:THREE.AdditiveBlending,depthWrite:false}));
+  glow.scale.setScalar(6);glow.position.set(x,9.6,z);levelGroup.add(glow);
+  for(let i=0;i<4;i++){
+    const s=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOWTEX,color:0x9a9aa2,
+      transparent:true,opacity:.4,depthWrite:false}));
+    s.position.set(x,10,z);levelGroup.add(s);
+    const ph=i*1.1;
+    anims.push(t=>{const k=((t*.5+ph)%4)/4;
+      s.position.set(x+k*1.2,9.5+k*5.5,z);s.scale.setScalar(2.5+k*4.5);
+      s.material.opacity=.42*(1-k);});
+  }}
+function fuji(x,z){
+  for(const dx of[-12,12]){
+    const hill=new THREE.Mesh(new THREE.ConeGeometry(10,5.5,8),lamb(0x40577b));
+    hill.position.set(x+dx,2.75,z+3);levelGroup.add(hill);
+  }
+  const c=new THREE.Mesh(new THREE.ConeGeometry(17,11,9),lamb(0x51678f));
+  c.position.set(x,5.5,z);levelGroup.add(c);
+  const cap=new THREE.Mesh(new THREE.ConeGeometry(7.2,4.7,9),lamb(0xf4f7fb));
+  cap.position.set(x,8.8,z);levelGroup.add(cap);}
+function palm(x,z){
+  const g=new THREE.Group();
+  const tr=new THREE.Mesh(new THREE.CylinderGeometry(.09,.15,2.2,7),lamb(0x7a5a38));
+  tr.position.y=1.1;tr.rotation.z=(x>0?-1:1)*.14;g.add(tr);
+  for(let i=0;i<5;i++){
+    const lf=new THREE.Mesh(new THREE.SphereGeometry(.66,6,4),lamb(0x2e8a4a));
+    lf.scale.set(1,.13,.3);const a=i/5*Math.PI*2;
+    lf.position.set(Math.cos(a)*.5,2.28,Math.sin(a)*.5);
+    lf.rotation.y=-a;lf.rotation.z=.32;g.add(lf);}
+  g.position.set(x,0,z);levelGroup.add(g);collider(x,1.1,z,.4,2.2,.4);return g;}
+function sakura(x,z,s=1){
+  const g=new THREE.Group();
+  const tr=new THREE.Mesh(new THREE.CylinderGeometry(.1*s,.17*s,1.5*s,7),lamb(0x6b4a34));
+  tr.position.y=.75*s;g.add(tr);
+  [[0,1.95,0,.8],[.6,1.6,.2,.62],[-.55,1.66,-.15,.6],[.1,1.7,-.5,.5]].forEach(([bx,by,bz,br],i)=>{
+    const b=new THREE.Mesh(new THREE.SphereGeometry(br*s,9,6),lamb(i%2?0xffc9df:0xffa8cc));
+    b.position.set(bx*s,by*s,bz*s);g.add(b);});
+  g.position.set(x,0,z);levelGroup.add(g);collider(x,1*s,z,1.2*s,2*s,1.2*s);return g;}
+function appleTree(x,z){
+  const g=new THREE.Group();
+  const tr=new THREE.Mesh(new THREE.CylinderGeometry(.09,.14,1.3,7),lamb(0x6b4a34));
+  tr.position.y=.65;g.add(tr);
+  const cr=new THREE.Mesh(new THREE.SphereGeometry(.85,8,6),lamb(0x3d7a2e));
+  cr.position.y=1.75;g.add(cr);
+  for(let i=0;i<6;i++){const a=i/6*Math.PI*2;
+    const ap=new THREE.Mesh(new THREE.SphereGeometry(.11,6,5),lamb(0xd0342c));
+    ap.position.set(Math.cos(a)*.75,1.6+Math.sin(i*2.1)*.4,Math.sin(a)*.75);g.add(ap);}
+  g.position.set(x,0,z);levelGroup.add(g);collider(x,1.1,z,1.1,2.4,1.1);return g;}
+function neon(x,z,color,h=2.7){
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,h,10),
+    new THREE.MeshBasicMaterial({color}));
+  m.position.set(x,h/2,z);levelGroup.add(m);
+  const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOWTEX,color,
+    transparent:true,opacity:.75,blending:THREE.AdditiveBlending,depthWrite:false}));
+  gl.scale.setScalar(2.4);gl.position.set(x,h*.62,z);levelGroup.add(gl);collider(x,h/2,z,.3,h,.3);}
+function building(x,z,w,h,color=0x141b30,winColor=0xffd166){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,w),lamb(color));
+  m.position.set(x,h/2,z);levelGroup.add(m);
+  const e=new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry),
+    new THREE.LineBasicMaterial({color:0x4a5a8a,transparent:true,opacity:.7}));
+  e.position.copy(m.position);levelGroup.add(e);
+  const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOWTEX,color:winColor,
+    transparent:true,opacity:.35,blending:THREE.AdditiveBlending,depthWrite:false}));
+  gl.scale.setScalar(1.3);gl.position.set(x,h+.15,z);levelGroup.add(gl);collider(x,h/2,z,w,h,w);}
+function tokyoTower(x,z,s=1){
+  const c1=new THREE.Mesh(new THREE.ConeGeometry(2*s,5.6*s,4),lamb(0xe8543a));
+  c1.position.set(x,2.8*s,z);c1.rotation.y=Math.PI/4;levelGroup.add(c1);
+  const e=new THREE.LineSegments(new THREE.EdgesGeometry(c1.geometry),
+    new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.6}));
+  e.position.copy(c1.position);e.rotation.copy(c1.rotation);levelGroup.add(e);
+  const deck=new THREE.Mesh(new THREE.BoxGeometry(1.5*s,.35*s,1.5*s),lamb(0xf2f2f2));
+  deck.position.set(x,3.5*s,z);levelGroup.add(deck);
+  const ant=new THREE.Mesh(new THREE.CylinderGeometry(.05*s,.1*s,2.2*s,6),lamb(0xe8543a));
+  ant.position.set(x,6.6*s,z);levelGroup.add(ant);
+  const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOWTEX,color:0xffb166,
+    transparent:true,opacity:.8,blending:THREE.AdditiveBlending,depthWrite:false}));
+  gl.scale.setScalar(2.2);gl.position.set(x,7.7*s,z);levelGroup.add(gl);collider(x,3*s,z,2.4*s,6*s,2.4*s);}
+function sapporoTower(x,z){
+  const col=new THREE.Mesh(new THREE.BoxGeometry(.8,5.4,.8),lamb(0x8a94a2));
+  col.position.set(x,2.7,z);levelGroup.add(col);
+  const clock=new THREE.Mesh(new THREE.BoxGeometry(1.5,.9,.4),lamb(0x2e7a4a));
+  clock.position.set(x,3.6,z);levelGroup.add(clock);
+  const face=new THREE.Mesh(new THREE.CircleGeometry(.3,16),new THREE.MeshBasicMaterial({color:0xfff7d0}));
+  face.position.set(x,3.6,z-.21);face.rotation.y=Math.PI;levelGroup.add(face);
+  const ant=new THREE.Mesh(new THREE.CylinderGeometry(.04,.08,1.8,6),lamb(0xd0342c));
+  ant.position.set(x,6.3,z);levelGroup.add(ant);collider(x,3,z,1,5.4,1);}
+function snowMound(x,z,r=1){
+  const m=new THREE.Mesh(new THREE.SphereGeometry(r,10,7),lamb(0xf4f9ff));
+  m.position.set(x,r*.25,z);m.scale.y=.55;levelGroup.add(m);collider(x,r*.28,z,r*1.8,r*.7,r*1.8);}
+function rock(x,z,s=1){
+  const m=new THREE.Mesh(new THREE.ConeGeometry(.6*s,.9*s,5),lamb(0x3a2a26));
+  m.position.set(x,.45*s,z);m.rotation.y=Math.random()*3;levelGroup.add(m);collider(x,.45*s,z,1.1*s,.9*s,1.1*s);}
+/* 日本石燈籠(春日燈籠風):火袋會發光→吃 bloom */
+function stoneLantern(x,z,s=1){
+  const g=new THREE.Group(),st=lowPerf?lamb(0x94918a):stoneMat(0x9a978f);
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(.3*s,.36*s,.2*s,6),st);base.position.y=.1*s;g.add(base);
+  const post=new THREE.Mesh(new THREE.CylinderGeometry(.1*s,.12*s,.86*s,6),st);post.position.y=.63*s;g.add(post);
+  const mid=new THREE.Mesh(new THREE.CylinderGeometry(.27*s,.27*s,.12*s,6),st);mid.position.y=1.12*s;g.add(mid);
+  const box=new THREE.Mesh(new THREE.BoxGeometry(.38*s,.4*s,.38*s),lamb(0xdad3c4));box.position.y=1.4*s;g.add(box);
+  const flame=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOWTEX,color:0xffb45e,
+    transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false}));
+  flame.scale.setScalar(1.15*s);flame.position.y=1.4*s;g.add(flame);
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(.42*s,.28*s,6),st);roof.position.y=1.74*s;g.add(roof);
+  const jewel=new THREE.Mesh(new THREE.SphereGeometry(.075*s,8,6),st);jewel.position.y=1.94*s;g.add(jewel);
+  g.position.set(x,0,z);levelGroup.add(g);collider(x,1*s,z,.62*s,2*s,.62*s);return g;}
+/* 反射水面(海/護城河):低粗糙+金屬感→吃 HDRI/天空 env 反射 */
+function water(x,z,w,d,color=0x25455f){
+  const m=lowPerf?new THREE.MeshLambertMaterial({color,transparent:true,opacity:.82})
+    :new THREE.MeshStandardMaterial({color,roughness:.12,metalness:.5,envMapIntensity:.6,transparent:true,opacity:.9});
+  const p=new THREE.Mesh(new THREE.PlaneGeometry(w,d),m);
+  p.rotation.x=-Math.PI/2;p.position.set(x,.015,z);levelGroup.add(p);
+  anims.push(t=>{p.position.y=.015+Math.sin(t*.7)*.006;});return p;}
+function gate(x,y,z,rotY=0,color=0x9fe8ff){
+  const m=new THREE.Mesh(new THREE.TorusGeometry(1,.08,10,26),
+    new THREE.MeshBasicMaterial({color}));
+  m.position.set(x,y,z);m.rotation.y=rotY;levelGroup.add(m);return m;}
+function wall(x,y,z,w,h,d,color=0x33465f){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),lamb(color));
+  m.position.set(x,y,z);m._aabb={w,h,d};levelGroup.add(m);walls.push(m);
+  const e=new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry),
+    new THREE.LineBasicMaterial({color:0x8fa3bf,transparent:true,opacity:.4}));
+  e.position.copy(m.position);levelGroup.add(e);return m;}
+/* 純碰撞盒(不繪出):讓 decor 組件變固體不可穿透。尺寸=物件實體大小
+   (physStep 已另加 .42 無人機半徑) */
+function collider(x,y,z,w,h,d){walls.push({position:new THREE.Vector3(x,y,z),_aabb:{w,h,d}});}
+
+/* ================= 關卡(由南到北) ================= */
+function zig(n,x0,x1,z0,dz,y){const a=[];for(let i=0;i<n;i++)a.push([i%2?x1:x0,y,z0+i*dz]);return a;}
+const LEVELS=[
+ {pref:'沖繩縣',spot:'守禮門與南國海灘',desc:'沿著椰子樹大道直線飛行!',t3:14,t2:22,
+  theme:{sky:['#3aa8dd','#bfeaf7'],fog:0x9fdcef,floor:0x117a8a,mount:0x2e8fae,grid:0x2ad4c8,day:true},
+  stars:Array.from({length:8},(_,i)=>[0,1.2,4+i*2]),
+  decor(){for(let z=4;z<=16;z+=4){palm(3.2,z);palm(-3.2,z);}
+    torii(0,19,1.9,0,0xc0392b);},
+  fact:'沖繩是日本最南端的縣,以前是「琉球王國」!有透明的藍色大海和珊瑚礁,紅色的守禮門是首里城的大門。'},
+ {pref:'鹿兒島縣',spot:'櫻島火山',desc:'火山灰飄落!左右蛇行前進',t3:20,t2:30,
+  theme:{sky:['#2a1430','#c2542e'],fog:0xc2542e,mount:0x33161f,grid:0x8a4a2e},
+  stars:zig(9,-2,2,4,1.6,1.2),
+  decor(){volcano(0,34);rock(-3,5.5);rock(3,7,1.3);rock(-3,9.4);rock(3.2,12,1.2);rock(-3,14.5);},
+  amb:{color:0x9a9088,size:.11,vy:-.5,vx:-.3,op:.5},
+  fact:'櫻島是一座「活火山」,到現在還常常噴煙!鹿兒島的小朋友上學會戴安全帽、撐傘擋火山灰喔。'},
+ {pref:'熊本縣',spot:'熊本城',desc:'飛越城牆!高高低低的星路',t3:22,t2:32,
+  theme:{sky:['#101c30','#3f5f86'],fog:0x3f5f86,mount:0x1c2c44,grid:0x4a7ab0},
+  stars:Array.from({length:9},(_,i)=>[0,[0.8,2.0,2.8][i%3],4+i*1.6]),
+  decor(){castle(0,19.5,1.5,0xf2eee5,0x2b2c2d,'kumamoto');glbRock(-3.5,8,1.3);glbRock(3.5,12,1.7);
+    stoneLantern(2.8,5);stoneLantern(-2.8,5);stoneLantern(2.8,10.5);stoneLantern(-2.8,10.5);},
+  fact:'熊本城是「日本三大名城」之一,黑色的城牆超帥氣!熊本的吉祥物酷MA萌(Kumamon)全世界都認識。'},
+ {pref:'廣島縣',spot:'嚴島神社大鳥居',desc:'繞著海上大鳥居迴旋爬升!',t3:28,t2:40,
+  theme:{sky:['#3a1430','#e8763a'],fog:0xe8763a,floor:0x1e3a5c,mount:0x421f33,grid:0x3a6b8a},
+  stars:Array.from({length:10},(_,i)=>{const a=i*.63;
+    return[Math.sin(a)*3,0.8+i*.22,10-Math.cos(a)*3];}),
+  decor(){water(0,12,90,80,0x1d4a66);torii(0,10,2.6,0,0xd0342c);
+    stoneLantern(3.2,4.5);stoneLantern(-3.2,4.5);},
+  fact:'嚴島神社的大鳥居蓋在海上!漲潮時看起來像浮在海面,是「世界文化遺產」,也是日本三景之一。'},
+ {pref:'大阪府',spot:'大阪城與道頓堀霓虹',desc:'S 型繞過霓虹燈柱!',t3:24,t2:34,
+  theme:{sky:['#0a0618','#241242'],fog:0x241242,mount:0x160c2e,grid:0xe84a8a},
+  stars:zig(8,-1.7,1.7,4.8,1.45,1.2),
+  decor(){[[0,6,0xe84a8a],[0,8.5,0x4ae8d0],[0,11,0xffd166],[0,13.5,0x9b7bff]]
+    .forEach(([x,z,c])=>neon(x,z,c));
+    castle(0,19.5,1.2,0xf5f0e4,0x3f786a,'osaka');water(0,18,30,16,0x0e1830);},
+  fact:'大阪是日本的「美食之都」!章魚燒、大阪燒都來自這裡。金色屋頂的大阪城是武將豐臣秀吉蓋的。'},
+ {pref:'京都府',spot:'伏見稻荷千本鳥居',desc:'穿過一座座紅色鳥居!',t3:26,t2:38,
+  theme:{sky:['#1c0f26','#7a3a52'],fog:0x7a3a52,mount:0x2e1830,grid:0xd0685c},
+  stars:[[0,1.2,5],[2.4,1.2,8],[-2.4,1.2,10.5],[0,1.2,13],[2.2,1.2,15.5],[-2,1.2,17.5]],
+  decor(){[[0,5,0],[2.4,8,.5],[-2.4,10.5,-.5],[0,13,0],[2.2,15.5,.4],[-2,17.5,-.4]]
+    .forEach(([x,z,r])=>torii(x,z,1.4,r));
+    torii(0,2.8,1.1,0);stoneLantern(3.2,7);stoneLantern(-3.2,12);stoneLantern(3.2,16.5);},
+  fact:'伏見稻荷大社有一萬多座紅色鳥居,排成長長的隧道綿延整座山!京都以前當了一千年的日本首都。'},
+ {pref:'山梨縣',spot:'富士山與櫻花',desc:'櫻花樹間畫一個大 8 字!',t3:30,t2:44,
+  theme:{sky:['#6a88c8','#f0c8d4'],fog:0xf0c8d4,floor:0x2e5a3a,mount:0x51678f,grid:0x6b9e78,day:true},
+  stars:[[0,1.2,9],[1.8,1.2,7.4],[3.4,1.2,9],[1.8,1.2,10.6],[0,1.2,9.2],[-1.8,1.2,10.6],[-3.4,1.2,9],[-1.8,1.2,7.4],[0,1.4,9]],
+  decor(){fuji(0,42);sakura(1.8,9,1.1);sakura(-1.8,9,1.1);
+    sakura(4.5,5,.9);sakura(-4.5,6,.85);sakura(4.5,13,.9);sakura(-4.5,14,.85);},
+  amb:{color:0xffb7d5,size:.12,vy:-.55,vx:.5,op:.9},
+  fact:'富士山高 3776 公尺,是日本第一高峰!山頂一年大部分時間都有積雪,天氣好時從東京也看得到。'},
+ {pref:'東京都',spot:'東京鐵塔夜景',desc:'高樓之間追會飄的星星!',t3:34,t2:50,
+  theme:{sky:['#05060f','#141b36'],fog:0x141b36,mount:0x0c1226,grid:0x4a6be8},
+  stars:[{p:[0,1.4,5],mv:{ax:'x',amp:1.4,sp:1.6,ph:0}},{p:[2,1.2,7.5],mv:{ax:'y',amp:.9,sp:2,ph:1}},
+    {p:[-2,1.6,9],mv:{ax:'y',amp:1,sp:1.7,ph:2}},{p:[0,2,11],mv:{ax:'x',amp:2,sp:1.3,ph:3}},
+    {p:[2.2,1.2,13],mv:{ax:'x',amp:1.2,sp:2.1,ph:4}},{p:[-2.2,1.8,14.5],mv:{ax:'y',amp:1,sp:1.5,ph:5}},
+    {p:[0,1.4,16.5],mv:{ax:'x',amp:2.4,sp:1.8,ph:6}},{p:[0,2.6,18],mv:{ax:'y',amp:.8,sp:2.4,ph:7}}],
+  decor(){tokyoTower(-4.8,15,1.2);
+    [[4.6,4,1.5,3.2,0xffd166],[5.3,7.5,1.3,5,0x4ae8d0],[4.7,11,1.6,2.6,0xe84a8a],
+     [5,14.5,1.4,4.2,0xffd166],[-4.8,5,1.5,4.5,0x9b7bff],[-5.5,8.5,1.3,2.8,0x4ae8d0],[-4.7,11.5,1.6,5.5,0xe84a8a]]
+    .forEach(([x,z,w,h,c])=>building(x,z,w,h,0x141b30,c));},
+  fact:'東京是日本的首都,人口超過一千萬!紅白色的東京鐵塔高 333 公尺,晚上會點燈,非常漂亮。'},
+ {pref:'青森縣',spot:'蘋果園迷宮',desc:'穿過果樹牆的缺口!撞牆會被彈開',t3:34,t2:50,
+  theme:{sky:['#2a160c','#a85a26'],fog:0xa85a26,floor:0x2c3a14,mount:0x3c2210,grid:0xc07a2e},
+  wallsDef:[[1.5,1.25,7,4.5,2.5,.4],[-1.5,1.25,10.5,4.5,2.5,.4],[0,.9,14,6,1.8,.4]],
+  wallColor:0x2e6b3a,
+  stars:[[0,1.2,4.5],[-2.2,1.2,7],[-2.2,1.2,8.8],[1.8,1.4,10.5],[1.8,1.2,12.3],[0,2.6,14],[0,1.4,15.8],[1.5,1.8,17.2],[-1.5,1.8,17.2]],
+  decor(){[[4.2,5],[-4.2,6],[4.2,9],[-4.2,12],[4.2,15],[-4.2,16.5]].forEach(([x,z])=>appleTree(x,z));
+    castle(0,19.8,.9,0xf7f5ef,0x555e5d,'hirosaki');},
+  amb:{color:0xd9822b,size:.11,vy:-.7,vx:.4,op:.7},
+  fact:'青森的蘋果產量是日本第一!全日本每兩顆蘋果,就有一顆來自青森。白色的弘前城春天被櫻花包圍超美。'},
+ {pref:'北海道',spot:'札幌雪祭終點站',desc:'最終關!雪中大冒險,終點超大星星!',t3:52,t2:75,
+  theme:{sky:['#9fc4e8','#eef5fb'],fog:0xdcecf7,floor:0xdfe9f2,mount:0xb8d0e2,grid:0x9fc4d8,day:true},
+  gatesDef:[[0,1.6,14.8,0],[0,2.2,16.2,0]],
+  stars:[[0,1.2,3],[0,1.2,5],[0,1.4,7],
+    [2,1.9,8.5],[2.6,2.5,10.5],[1.4,2.9,12.3],
+    [-1.6,1.2,9.5],[-1.6,1.2,11.5],[-1.6,1.5,13],
+    [0,1.6,14.8],[0,2.2,16.2],
+    {p:[0,3.2,18],big:true}],
+  decor(){sapporoTower(0,19);snowMound(3.5,6,1.1);snowMound(-3.5,8,.9);
+    snowMound(3.5,12,1);snowMound(-3.2,15,.8);
+    poleSnow(0,10);poleSnow(0,12);},
+  amb:{color:0xffffff,size:.15,vy:-1.1,vx:.25,op:.95},
+  fact:'北海道是日本最北的大島!冬天的札幌雪祭有巨大雪雕,夏天有整片紫色薰衣草田。牛奶和哈密瓜也超有名!'},
+];
+function poleSnow(x,z){
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,2.8,10),lamb(0x4a7ab0));
+  m.position.set(x,1.4,z);levelGroup.add(m);
+  const tip=new THREE.Mesh(new THREE.SphereGeometry(.16,10,8),lamb(0xf4f9ff));
+  tip.position.set(x,2.9,z);levelGroup.add(tip);}
+
+/* ================= state ================= */
+const pos=new THREE.Vector3(0,.15,1), vel=new THREE.Vector3();
+let yaw=0,camMode=0,locked=true,curLv=0,stars=[],got=0,t0=0,doneFlag=false;
+let combo=0,comboT=0,cdToken=0,runActive=false,menuAt=0;
+const $=id=>document.getElementById(id);
+const alt=()=>pos.y-.15;
+const menuOpen=()=>!$('menu').classList.contains('hidden');
+function toast(msg,ms=1200){const t=$('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),ms);}
+const save=JSON.parse(localStorage.getItem('droneStarsSave')||'{}');
+function rateOf(lv,t){return t<=LEVELS[lv].t3?3:t<=LEVELS[lv].t2?2:1;}
+function starsStr(n){return '★'.repeat(n)+'<span class="off">'+'★'.repeat(3-n)+'</span>';}
+const PRAISE=['太棒了!','漂亮!','神操作!','超順的!','就是這樣!','高手!'];
+
+/* ================= input(同實機配置) ================= */
+const keys={};
+addEventListener('keydown',e=>{keys[e.code]=1;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();});
+addEventListener('keyup',e=>{keys[e.code]=0});
+function makeStick(el){
+  const st={x:0,y:0,id:null},nub=el.querySelector('.nub');
+  function mv(e){const r=el.getBoundingClientRect();
+    let dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);
+    const m=r.width/2-20,l=Math.hypot(dx,dy);
+    if(l>m){dx*=m/l;dy*=m/l}
+    st.x=dx/m;st.y=dy/m;
+    nub.style.transform=`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))`;}
+  el.addEventListener('pointerdown',e=>{st.id=e.pointerId;el.setPointerCapture(e.pointerId);mv(e)});
+  el.addEventListener('pointermove',e=>{if(e.pointerId===st.id)mv(e)});
+  const end=e=>{if(e.pointerId===st.id){st.id=null;st.x=0;st.y=0;nub.style.transform='translate(-50%,-50%)'}};
+  el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);
+  return st;
+}
+const tL=makeStick($('stickL')),tR=makeStick($('stickR'));
+if('ontouchstart' in window)document.body.classList.add('touchmode');
+const dz=v=>Math.abs(v)<.13?0:v;
+function readInput(){
+  if(locked)return{thr:0,yaw:0,pit:0,rol:0};
+  let thr=(keys.KeyW?1:0)-(keys.KeyS?1:0);
+  let yawIn=(keys.KeyD?1:0)-(keys.KeyA?1:0);
+  let pit=(keys.ArrowUp?1:0)-(keys.ArrowDown?1:0);
+  let rol=(keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0);
+  thr+=-tL.y;yawIn+=tL.x;pit+=-tR.y;rol+=tR.x;
+  const gps=navigator.getGamepads?navigator.getGamepads():[];
+  for(const gp of gps){if(!gp)continue;
+    thr+=-dz(gp.axes[1]||0);yawIn+=dz(gp.axes[0]||0);
+    pit+=-dz(gp.axes[3]||0);rol+=dz(gp.axes[2]||0);
+    if(gp.buttons[9]&&gp.buttons[9].pressed&&!gp._b9){gp._b9=1;loadLevel(curLv);}
+    if(gp.buttons[9]&&!gp.buttons[9].pressed)gp._b9=0;
+  }
+  const c=v=>Math.max(-1,Math.min(1,v));
+  return{thr:c(thr),yaw:c(yawIn),pit:c(pit),rol:c(rol)};
+}
+
+/* ================= physics ================= */
+const MAXH=3.6,MAXV=2.7,YAWRATE=2.7;
+const fwd=new THREE.Vector3(),right=new THREE.Vector3(),tmp=new THREE.Vector3();
+function physStep(dt,inp){
+  yaw-=inp.yaw*YAWRATE*dt;
+  fwd.set(Math.sin(yaw),0,Math.cos(yaw));
+  right.set(-Math.cos(yaw),0,Math.sin(yaw)); /* 螢幕右=-X */
+  tmp.copy(fwd).multiplyScalar(inp.pit*MAXH).addScaledVector(right,inp.rol*MAXH);
+  vel.x+=(tmp.x-vel.x)*Math.min(1,4*dt);
+  vel.z+=(tmp.z-vel.z)*Math.min(1,4*dt);
+  vel.y+=((inp.thr*MAXV)-vel.y)*Math.min(1,4.5*dt);
+  pos.addScaledVector(vel,dt);
+  pos.x=Math.max(-6.5,Math.min(6.5,pos.x));
+  pos.z=Math.max(-1.5,Math.min(20,pos.z));
+  pos.y=Math.max(.15,Math.min(7,pos.y));
+  for(const w of walls){
+    const hw=w._aabb.w/2+.42,hh=w._aabb.h/2+.42,hd=w._aabb.d/2+.42;
+    const dx=pos.x-w.position.x,dy=pos.y-w.position.y,dzz=pos.z-w.position.z;
+    if(Math.abs(dx)<hw&&Math.abs(dy)<hh&&Math.abs(dzz)<hd){
+      const px=hw-Math.abs(dx),py=hh-Math.abs(dy),pz=hd-Math.abs(dzz);
+      if(px<py&&px<pz){pos.x=w.position.x+Math.sign(dx)*hw;vel.x=Math.sign(dx)*Math.abs(vel.x)*.5;}
+      else if(py<pz){pos.y=w.position.y+Math.sign(dy)*hh;vel.y=Math.sign(dy)*Math.abs(vel.y)*.5;}
+      else{pos.z=w.position.z+Math.sign(dzz)*hd;vel.z=Math.sign(dzz)*Math.abs(vel.z)*.5;}
+      /* 碰撞不發聲:每幀觸發會變成連續噪音(使用者回報很吵) */
+    }
+  }
+  drone.position.copy(pos);
+  drone.rotation.set(0,yaw,0);
+  drone.rotateX(inp.pit*.28);drone.rotateZ(inp.rol*.28);
+  props.forEach((p,i)=>p.rotation.y+=(i%2?1:-1)*(.6+Math.abs(inp.thr)*.5));
+  trail[0].position.lerp(pos,.8);
+  for(let i=trail.length-1;i>0;i--)trail[i].position.lerp(trail[i-1].position,.42);
+  shadow.position.x=pos.x;shadow.position.z=pos.z;
+  const k=Math.max(.25,1-alt()/7);
+  shadow.scale.setScalar(k);shadow.material.opacity=.38*k;
+}
+
+/* ================= level flow ================= */
+function loadLevel(i,preview=false){
+  curLv=i;doneFlag=false;got=0;t0=0;combo=0;comboT=0;locked=true;
+  runActive=!preview;
+  walls=[];anims=[];
+  while(levelGroup.children.length)levelGroup.remove(levelGroup.children[0]);
+  const L=LEVELS[i],T=L.theme;
+  L._sky=L._sky||skyTex(T.sky[0],T.sky[1]);
+  scene.background=L._sky;
+  applyEnv(T,L._sky);
+  scene.fog=T.day?new THREE.Fog(T.fog,26,85):new THREE.Fog(T.fog,20,60);
+  floorMat.color.copy(T.floor?new THREE.Color(T.floor):new THREE.Color(T.fog).multiplyScalar(.28));
+  mountMat.color.setHex(T.mount);
+  mounts.visible=false;
+  bgStars.visible=!T.day;
+  panoramaMat.color.setHex(T.day?0xffffff:0x667aa8);
+  panoramaMat.opacity=T.day?1:.72;panoramaMat.transparent=!T.day;
+  sun.color.setHex(T.day?0xfff1d6:0x91a9d8);
+  sun.intensity=T.day?1.05:.38;
+  renderer.toneMappingExposure=T.day?1.08:.92;
+  setGrid(i===0?0x284657:T.grid);
+  grid.material.opacity=i===0?.075:.11;
+  droneCageMat.color.setHex(i===0?0x14318f:0x79c7ff); /* 第一關無人機:深藍 */
+  droneCageMat.opacity=i===0?.98:.72;
+  setAmbient(L.amb||null);
+  scenicEnvironment(T,i);
+  if(L.wallsDef)L.wallsDef.forEach(([x,y,z,w,h,d])=>wall(x,y,z,w,h,d,L.wallColor||0x33465f));
+  if(L.gatesDef)L.gatesDef.forEach(([x,y,z,r])=>gate(x,y,z,r));
+  if(L.decor)L.decor();
+  levelGroup.traverse(o=>{if(o.isMesh){o.castShadow=o.geometry.type!=='PlaneGeometry';o.receiveShadow=true;}});
+  stars=L.stars.map((s,si)=>{
+    const isObj=!Array.isArray(s);
+    const p=isObj?s.p:s;
+    const m=new THREE.Mesh(isObj&&s.big?STARGEO_BIG:STARGEO,starMat.clone());
+    m.position.set(p[0],p[1],p[2]);
+    m._base=new THREE.Vector3(p[0],p[1],p[2]);
+    m._mv=isObj?s.mv:null;m._got=false;m._big=isObj&&!!s.big;m._ph=si*1.3;
+    const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOWTEX,color:0xffd166,
+      transparent:true,opacity:.85,blending:THREE.AdditiveBlending,depthWrite:false}));
+    gl.scale.setScalar(m._big?3.4:1.6);m.add(gl);
+    const mk=new THREE.Mesh(new THREE.RingGeometry(.3,.42,22),
+      new THREE.MeshBasicMaterial({color:0xffd166,transparent:true,opacity:.32,
+        side:THREE.DoubleSide,depthWrite:false}));
+    mk.rotation.x=-Math.PI/2;mk.position.set(p[0],.03,p[2]);
+    levelGroup.add(mk);m._mk=mk;
+    levelGroup.add(m);return m;});
+  $('tot').textContent=stars.length;$('got').textContent='0';$('tim').textContent='0.0';
+  pos.set(0,.15,1);vel.set(0,0,0);yaw=0;
+  fwd.set(0,0,1);
+  camera.position.set(0,2.4,-3.6);camera.lookAt(0,1,3);
+  trail.forEach(t=>t.position.copy(pos));
+  $('prog').textContent=preview?'🗾 選一站,從沖繩出發由南往北飛!':`第 ${i+1} 站 ${L.pref}|${L.spot} — ${L.desc}`;
+  $('done').classList.add('hidden');
+  const my=++cdToken;
+  if(preview)return;
+  $('menu').classList.add('hidden');
+  toast(`✈ 抵達 ${L.pref}!`,1500);
+  const c=$('count');const seq=['3','2','1','GO!'];
+  seq.forEach((s,k)=>setTimeout(()=>{
+    if(my!==cdToken)return;
+    c.textContent=s;tone(k===3?880:440,.15,.15,'triangle');
+    if(k===3){locked=false;t0=performance.now();
+      setTimeout(()=>{if(my===cdToken)c.textContent='';},600);}
+  },400+k*650));
+}
+function elapsed(){return t0?Math.max(0,(performance.now()-t0)/1000):0;}
+function animStars(dt){
+  const now=performance.now()/1000;
+  for(const s of stars){
+    if(s._got)continue;
+    if(s._mv){const off=Math.sin(now*s._mv.sp+s._mv.ph)*s._mv.amp;
+      if(s._mv.ax==='x'){s.position.x=s._base.x+off;s._mk.position.x=s.position.x;}
+      else s.position.y=Math.max(.5,s._base.y+off);}
+    s.rotation.y+=dt*2.2;
+    s.scale.setScalar(1+Math.sin(now*3+s._ph)*.07);
+  }
+  for(const f of anims)f(now);
+}
+function collectCheck(dt){
+  if(doneFlag||locked)return;
+  comboT-=dt;if(comboT<=0)combo=0;
+  for(const s of stars){
+    if(s._got)continue;
+    if(pos.distanceTo(s.position)<(s._big?1.3:.78)){
+      s._got=true;s.visible=false;s._mk.visible=false;got++;
+      $('got').textContent=got;
+      burst(s.position.x,s.position.y,s.position.z,s._big?22:10);
+      combo++;comboT=3;
+      tone(520+Math.min(combo,8)*70,.12,.14,'triangle');
+      if(combo>=2){const cb=$('combo');
+        cb.textContent=`COMBO x${combo} ${PRAISE[Math.min(combo-2,PRAISE.length-1)]}`;
+        cb.classList.add('show');clearTimeout(cb._h);
+        cb._h=setTimeout(()=>cb.classList.remove('show'),1400);}
+      if(got===stars.length)clearLevel();
+    }
+  }
+}
+function clearLevel(){
+  doneFlag=true;locked=true;runActive=false;
+  const t=elapsed(),r=rateOf(curLv,t);
+  const old=save[curLv];
+  if(!old||r>old.s||(r===old.s&&t<old.t)){save[curLv]={s:r,t:+t.toFixed(1)};
+    localStorage.setItem('droneStarsSave',JSON.stringify(save));}
+  fanfare();
+  for(let k=0;k<3;k++)setTimeout(()=>burst(pos.x+(Math.random()*2-1),pos.y+1.2,pos.z,16,[0xffd166,0xff8a3c,0x4fe3a3][k]),k*250);
+  const L=LEVELS[curLv];
+  $('doneTitle').textContent=`🎉 第 ${curLv+1} 站 ${L.pref} 過關!`;
+  $('doneStars').innerHTML=starsStr(r);
+  $('doneTime').textContent=t.toFixed(1)+' 秒';
+  $('doneFact').innerHTML=`📍 <b>${L.pref}豆知識</b>:${L.fact}`;
+  $('doneSub').textContent=(r===3?'滿星!':
+    `★★★ ≤ ${L.t3}s|★★ ≤ ${L.t2}s`)+
+    (curLv<9?`|下一站:${LEVELS[curLv+1].pref}!`:'|恭喜完成日本縱斷之旅!🗾');
+  $('nextBtn').style.display=curLv<9?'':'none';
+  setTimeout(()=>$('done').classList.remove('hidden'),900);
+}
+function buildMenu(){
+  const g=$('lvgrid');g.innerHTML='';
+  LEVELS.forEach((L,i)=>{
+    const unlocked=i===0||save[i-1];
+    const b=document.createElement('button');
+    b.className='lvbtn'+(unlocked?'':' lock');
+    const st=save[i]?starsStr(save[i].s):starsStr(0);
+    const bs=save[i]?`最佳 ${save[i].t}s`:(unlocked?'尚未過關':'先過上一站解鎖');
+    b.innerHTML=`<span class="nm">${unlocked?'<span class="no">'+(i+1)+'</span>':'🔒'}${L.pref}</span>
+      <span class="sp">${L.spot}</span>
+      <span class="st">${st}</span><span class="bs">${bs}</span>`;
+    if(unlocked)b.onclick=()=>{tone(700,.07);loadLevel(i);};
+    g.appendChild(b);
+  });
+  $('resumeBtn').classList.toggle('hidden',!(runActive&&!doneFlag));
+}
+function showMenu(){menuAt=performance.now();buildMenu();$('menu').classList.remove('hidden');}
+$('menuBtn').onclick=showMenu;
+$('resumeBtn').onclick=()=>{
+  if(t0)t0+=performance.now()-menuAt;
+  $('menu').classList.add('hidden');tone(700,.07);};
+$('resetBtn').onclick=()=>loadLevel(curLv);
+$('againBtn').onclick=()=>loadLevel(curLv);
+$('backBtn').onclick=()=>{$('done').classList.add('hidden');showMenu();};
+$('nextBtn').onclick=()=>loadLevel(Math.min(9,curLv+1));
+$('camBtn').onclick=()=>{camMode=(camMode+1)%2;
+  $('camBtn').textContent=camMode?'📷 俯瞰':'📷 跟隨';};
+addEventListener('gamepadconnected',()=>toast('🎮 手把已連線',1800));
+
+/* ================= main loop ================= */
+function resize(){renderer.setSize(innerWidth,innerHeight,false);
+  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}
+addEventListener('resize',resize);resize();
+loadLevel(0,true);showMenu();
+let lastT=performance.now();
+renderer.setAnimationLoop(()=>{
+  const now=performance.now();
+  const dt=Math.min(.05,(now-lastT)/1000);lastT=now;
+  animStars(dt);
+  updateParts(dt);
+  animAmbient(dt);
+  if(!menuOpen()){
+    const inp=readInput();
+    physStep(dt,inp);
+    collectCheck(dt);
+    if(t0&&!doneFlag)$('tim').textContent=elapsed().toFixed(1);
+  }
+  const tf=62+Math.min(11,vel.length()*1.5);
+  camera.fov+=(tf-camera.fov)*Math.min(1,6*dt);
+  camera.updateProjectionMatrix();
+  if(camMode===0){
+    tmp.set(pos.x-fwd.x*4.6,pos.y+2.1,pos.z-fwd.z*4.6);
+    camera.position.lerp(tmp,Math.min(1,5*dt));
+    camera.lookAt(pos.x,pos.y+.4,pos.z);
+  }else{
+    tmp.set(pos.x*.4,15,pos.z*.55+4);
+    camera.position.lerp(tmp,Math.min(1,4*dt));
+    camera.lookAt(pos.x,0,pos.z);
+  }
+  renderer.render(scene,camera);
+});
+</script>
+</body>
+</html>
