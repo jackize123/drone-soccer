@@ -578,6 +578,11 @@ let idx=0,t=0,lineIdx=-1,playing=false,voice=true,started=false,raf=null,last=0;
 /* key 帶版本號:換過預設值,舊的存檔要讓它失效,否則老使用者拿不到新的預設語速 */
 let rate=parseFloat(localStorage.getItem('droneVidRate2')||'0.85');
 let voiceName=localStorage.getItem('droneVidVoice2')||'';
+/* 網址加 ?voice=Hanhan 就直接用那個聲音,方便 A/B 比較。
+   只比對名稱關鍵字,大小寫不拘;這是臨時覆蓋,不會寫進 localStorage —— 想長期
+   換成某個聲音,在控制列的選單點一次就會記住。 */
+const qVoice=new URLSearchParams(location.search).get('voice');
+let qVoiceDone=false;
 const total=S.reduce((a,s)=>a+s.dur,0);
 
 S.forEach((s,i)=>{
@@ -853,6 +858,11 @@ function popVoices(){
       const sex=voiceSex(v.name), tier=voiceTier(v);
       return `<option value="${v.name}">${nm} · ${tier.label}${sex?'('+sex+')':''}${def&&v.name===def.name?' ★':''}</option>`;
     }).join('');
+  /* 網址指定的聲音只在第一次套用,之後在選單裡改就不會被蓋回去 */
+  if(qVoice&&!qVoiceDone&&ranked.length){
+    const hit=ranked.find(x=>x.v.name.toLowerCase().includes(qVoice.toLowerCase()));
+    if(hit){voiceName=hit.v.name; qVoiceDone=true;}
+  }
   vsel.value=ranked.some(x=>x.v.name===voiceName)?voiceName:'';
   /* 挑不到神經語音 —— 本機 SAPI 語音再怎麼調也差一截,直接告訴使用者現況與去哪裡拿 */
   const tip=document.getElementById('voicetip');
