@@ -639,8 +639,18 @@ function voiceTier(v){
   if(v.localService===false||/Google/i.test(v.name))return {t:1,label:'雲端語音'};
   return {t:0,label:'本機標準'};
 }
-/* 預設一律挑分數最高的 —— 也就是能取得的最新語音模型 */
-function defaultVoice(){const r=rankedVoices();return r.length?r[0].v:null}
+/* 課程選定的預設語音。優先順序:
+   1. 有神經語音就用它 —— 音質差一個世代,值得自動升級(例如用 Edge 開的時候)
+   2. 沒有的話用課程指定的 Yating
+   3. 都找不到才退回評分最高者 */
+const PREFERRED=/Yating/i;
+function defaultVoice(){
+  const r=rankedVoices();
+  if(!r.length)return null;
+  const neural=r.find(x=>voiceTier(x.v).t>=2);
+  if(neural)return neural.v;
+  return (r.find(x=>PREFERRED.test(x.v.name))||r[0]).v;
+}
 function bestVoice(){return defaultVoice()}
 
 /* 2. 文字正規化 -------------------------------------------------- */

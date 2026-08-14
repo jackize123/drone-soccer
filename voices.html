@@ -69,6 +69,17 @@ h1{font-family:var(--display); font-weight:900; font-stretch:112%;
   border-radius:4px; padding:.45em .6em; font-family:var(--cjk); font-size:.85rem; max-width:100%;
 }
 
+/* 自動模式說明 */
+.auto{
+  display:grid; grid-template-columns:minmax(0,1fr) auto; gap:14px; align-items:center;
+  border:1px solid var(--hairline); border-radius:5px; padding:13px 16px;
+  background:var(--deck); margin-bottom:14px; font-size:.83rem; line-height:1.8;
+}
+.auto b{color:var(--led)}
+.auto span{color:var(--ink-low)}
+.auto.on{border-color:var(--led); box-shadow:0 0 0 1px rgba(53,232,207,.25)}
+@media (max-width:640px){ .auto{grid-template-columns:1fr} }
+
 /* 語音卡 */
 .list{display:flex; flex-direction:column; gap:10px}
 .vrow{
@@ -136,6 +147,14 @@ footer a{color:var(--ink-mid)}
       <option>第二題四方位旋轉,每次轉動九十度停三秒,高度誤差二十公分內</option>
       <option>來,我們現在來學天穹足球無人機遙控器</option>
     </select>
+  </div>
+
+  <div class="auto" id="autoBox">
+    <div>
+      <b>自動</b>(建議)：有神經語音就用它,沒有就用課程指定的 <b>Yating</b>。<br>
+      <span>手動指定某個聲音之後就會鎖住 —— 之後改用 Edge 開、多出神經語音時也不會自動換過去。</span>
+    </div>
+    <button id="autoBtn">恢復自動</button>
   </div>
 
   <div class="list" id="list"><div class="empty">正在讀取語音清單⋯</div></div>
@@ -215,7 +234,15 @@ function render(){
   tierEl.className='v'+(best&&best.t>=2?'':' warn');
   const curV=vs.find(v=>v.name===cur);
   document.getElementById('envCur').textContent=
-    curV?curV.name.replace(/^(Microsoft|Google|Apple)\s*/i,'').replace(/[（(].*$/,'').trim():'自動(挑最新)';
+    curV?curV.name.replace(/^(Microsoft|Google|Apple)\s*/i,'').replace(/[（(].*$/,'').trim():'自動';
+  /* 沒有手動指定時就是自動模式 —— 把它標起來,使用者才知道自己現在鎖住了沒有 */
+  const box=document.getElementById('autoBox');
+  box.classList.toggle('on',!cur);
+  const ab=document.getElementById('autoBtn');
+  ab.textContent=cur?'恢復自動':'✓ 目前是自動';
+  ab.disabled=!cur;
+  ab.style.opacity=cur?'1':'.5';
+  ab.style.cursor=cur?'pointer':'default';
 
   /* 沒有神經語音就告訴使用者去哪裡拿 —— 這是換到「新聲音」唯一的免費途徑 */
   const up=document.getElementById('upgrade');
@@ -252,6 +279,18 @@ function render(){
     };
     listEl.appendChild(row);
   });
+}
+
+document.getElementById('autoBtn').onclick=()=>{
+  localStorage.removeItem(KEY);
+  render();
+  const vs=zhVoices(); if(vs.length)preview(defaultVoice(vs));
+};
+/* 跟影片頁同一套規則:神經語音優先,否則用課程指定的 Yating */
+const PREFERRED=/Yating/i;
+function defaultVoice(vs){
+  if(!vs.length)return null;
+  return vs.find(v=>tierOf(v).t>=2)||vs.find(v=>PREFERRED.test(v.name))||vs[0];
 }
 
 speechSynthesis.getVoices();
