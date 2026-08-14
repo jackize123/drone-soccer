@@ -177,14 +177,28 @@ if(!lowPerf){
     const T=LEVELS[curLv]&&LEVELS[curLv].theme;if(T&&T.day)scene.environment=hdrEnv;
   },undefined,e=>console.warn('HDRI load failed',e));
 }
-function applyEnv(T,skyTex){
+function applyEnv(T,tex,isPano){
   if(lowPerf||!pmrem)return;
-  if(T.day&&hdrEnv){scene.environment=hdrEnv;return;} /* 日:真 HDRI 天光 */
-  if(envRT)envRT.dispose();                            /* 夜:程序天空 env */
-  envRT=pmrem.fromEquirectangular(skyTex);
+  /* 有本關的全景圖就拿它當光源 —— 天空與受光要來自同一個場景,否則會出現
+     「天空是富士山、光卻是通用晴空」的矛盾。沒有才退回共用 HDRI(日)或程序天空(夜)。 */
+  if(!isPano&&T.day&&hdrEnv){scene.environment=hdrEnv;return;}
+  if(envRT)envRT.dispose();
+  envRT=pmrem.fromEquirectangular(tex);
   scene.environment=envRT.texture;
 }
 
+/* 全景天空 —— 一張 equirect 圖同時當背景與環境光來源(applyEnv 會拿它做 PMREM),
+   所以換天空等於換整個場景的受光色調,這是寫實化 CP 值最高的一項。
+   載入是非同步的:先顯示程序漸層天空,圖到了再換上,載不到就維持漸層,關卡不會壞。 */
+const _panoCache={};
+function loadPano(url,cb){
+  if(_panoCache[url]){cb(_panoCache[url]);return;}
+  new THREE.TextureLoader().load(url,tex=>{
+    tex.mapping=THREE.EquirectangularReflectionMapping;
+    tex.encoding=THREE.sRGBEncoding;      /* r128 用 encoding,不是新版的 colorSpace */
+    _panoCache[url]=tex;cb(tex);
+  },undefined,()=>{});
+}
 function skyTex(top,bot){
   const cv=document.createElement('canvas');cv.width=2;cv.height=256;
   const g=cv.getContext('2d');const gr=g.createLinearGradient(0,0,0,256);
@@ -520,11 +534,17 @@ function volcano(x,z){
       s.position.set(x+k*1.2,9.5+k*5.5,z);s.scale.setScalar(2.5+k*4.5);
       s.material.opacity=.42*(1-k);});
   }}
+/* 天空全景載入時,遠景地標由照片提供,就別再放低多邊形的同一座山 —— 否則畫面上
+   會出現兩座富士山(積木的那座還會把真的擋住)。手機不載全景,仍保留 3D 版本。 */
+function panoHasLandmark(){
+  return !lowPerf&&LEVELS[curLv]&&LEVELS[curLv].theme&&!!LEVELS[curLv].theme.sky360;
+}
 function fuji(x,z){
-  for(const dx of[-12,12]){
+  for(const dx of[-12,12]){                      /* 兩側小丘是中景,保留 */
     const hill=new THREE.Mesh(new THREE.ConeGeometry(10,5.5,8),lamb(0x40577b));
     hill.position.set(x+dx,2.75,z+3);levelGroup.add(hill);
   }
+  if(panoHasLandmark())return;                   /* 主山交給天空照片 */
   const c=new THREE.Mesh(new THREE.ConeGeometry(17,11,9),lamb(0x51678f));
   c.position.set(x,5.5,z);levelGroup.add(c);
   const cap=new THREE.Mesh(new THREE.ConeGeometry(7.2,4.7,9),lamb(0xf4f7fb));
@@ -639,53 +659,53 @@ function collider(x,y,z,w,h,d){walls.push({position:new THREE.Vector3(x,y,z),_aa
 function zig(n,x0,x1,z0,dz,y){const a=[];for(let i=0;i<n;i++)a.push([i%2?x1:x0,y,z0+i*dz]);return a;}
 const LEVELS=[
  {pref:'沖繩縣',spot:'守禮門與南國海灘',desc:'沿著椰子樹大道直線飛行!',t3:14,t2:22,
-  theme:{sky:['#3aa8dd','#bfeaf7'],fog:0x9fdcef,floor:0x117a8a,mount:0x2e8fae,grid:0x2ad4c8,day:true},
+  theme:{sky360:'assets/sky/01_okinawa.jpg',sky:['#3aa8dd','#bfeaf7'],fog:0x9fdcef,floor:0x117a8a,mount:0x2e8fae,grid:0x2ad4c8,day:true},
   stars:Array.from({length:8},(_,i)=>[0,1.2,4+i*2]),
   decor(){for(let z=4;z<=16;z+=4){palm(3.2,z);palm(-3.2,z);}
     torii(0,19,1.9,0,0xc0392b);},
   fact:'沖繩是日本最南端的縣,以前是「琉球王國」!有透明的藍色大海和珊瑚礁,紅色的守禮門是首里城的大門。'},
  {pref:'鹿兒島縣',spot:'櫻島火山',desc:'火山灰飄落!左右蛇行前進',t3:20,t2:30,
-  theme:{sky:['#2a1430','#c2542e'],fog:0xc2542e,mount:0x33161f,grid:0x8a4a2e},
+  theme:{sky360:'assets/sky/02_sakurajima.jpg',sky:['#2a1430','#c2542e'],fog:0xc2542e,mount:0x33161f,grid:0x8a4a2e},
   stars:zig(9,-2,2,4,1.6,1.2),
   decor(){volcano(0,34);rock(-3,5.5);rock(3,7,1.3);rock(-3,9.4);rock(3.2,12,1.2);rock(-3,14.5);},
   amb:{color:0x9a9088,size:.11,vy:-.5,vx:-.3,op:.5},
   fact:'櫻島是一座「活火山」,到現在還常常噴煙!鹿兒島的小朋友上學會戴安全帽、撐傘擋火山灰喔。'},
  {pref:'熊本縣',spot:'熊本城',desc:'飛越城牆!高高低低的星路',t3:22,t2:32,
-  theme:{sky:['#101c30','#3f5f86'],fog:0x3f5f86,mount:0x1c2c44,grid:0x4a7ab0},
+  theme:{sky360:'assets/sky/03_kumamoto.jpg',sky:['#101c30','#3f5f86'],fog:0x3f5f86,mount:0x1c2c44,grid:0x4a7ab0},
   stars:Array.from({length:9},(_,i)=>[0,[0.8,2.0,2.8][i%3],4+i*1.6]),
   decor(){castle(0,19.5,1.5,0xf2eee5,0x2b2c2d,'kumamoto');glbRock(-3.5,8,1.3);glbRock(3.5,12,1.7);
     stoneLantern(2.8,5);stoneLantern(-2.8,5);stoneLantern(2.8,10.5);stoneLantern(-2.8,10.5);},
   fact:'熊本城是「日本三大名城」之一,黑色的城牆超帥氣!熊本的吉祥物酷MA萌(Kumamon)全世界都認識。'},
  {pref:'廣島縣',spot:'嚴島神社大鳥居',desc:'繞著海上大鳥居迴旋爬升!',t3:28,t2:40,
-  theme:{sky:['#3a1430','#e8763a'],fog:0xe8763a,floor:0x1e3a5c,mount:0x421f33,grid:0x3a6b8a},
+  theme:{sky360:'assets/sky/04_itsukushima.jpg',sky:['#3a1430','#e8763a'],fog:0xe8763a,floor:0x1e3a5c,mount:0x421f33,grid:0x3a6b8a},
   stars:Array.from({length:10},(_,i)=>{const a=i*.63;
     return[Math.sin(a)*3,0.8+i*.22,10-Math.cos(a)*3];}),
   decor(){water(0,12,90,80,0x1d4a66);torii(0,10,2.6,0,0xd0342c);
     stoneLantern(3.2,4.5);stoneLantern(-3.2,4.5);},
   fact:'嚴島神社的大鳥居蓋在海上!漲潮時看起來像浮在海面,是「世界文化遺產」,也是日本三景之一。'},
  {pref:'大阪府',spot:'大阪城與道頓堀霓虹',desc:'S 型繞過霓虹燈柱!',t3:24,t2:34,
-  theme:{sky:['#0a0618','#241242'],fog:0x241242,mount:0x160c2e,grid:0xe84a8a},
+  theme:{sky360:'assets/sky/05_dotonbori.jpg',sky:['#0a0618','#241242'],fog:0x241242,mount:0x160c2e,grid:0xe84a8a},
   stars:zig(8,-1.7,1.7,4.8,1.45,1.2),
   decor(){[[0,6,0xe84a8a],[0,8.5,0x4ae8d0],[0,11,0xffd166],[0,13.5,0x9b7bff]]
     .forEach(([x,z,c])=>neon(x,z,c));
     castle(0,19.5,1.2,0xf5f0e4,0x3f786a,'osaka');water(0,18,30,16,0x0e1830);},
   fact:'大阪是日本的「美食之都」!章魚燒、大阪燒都來自這裡。金色屋頂的大阪城是武將豐臣秀吉蓋的。'},
  {pref:'京都府',spot:'伏見稻荷千本鳥居',desc:'穿過一座座紅色鳥居!',t3:26,t2:38,
-  theme:{sky:['#1c0f26','#7a3a52'],fog:0x7a3a52,mount:0x2e1830,grid:0xd0685c},
+  theme:{sky360:'assets/sky/06_fushimi.jpg',sky:['#1c0f26','#7a3a52'],fog:0x7a3a52,mount:0x2e1830,grid:0xd0685c},
   stars:[[0,1.2,5],[2.4,1.2,8],[-2.4,1.2,10.5],[0,1.2,13],[2.2,1.2,15.5],[-2,1.2,17.5]],
   decor(){[[0,5,0],[2.4,8,.5],[-2.4,10.5,-.5],[0,13,0],[2.2,15.5,.4],[-2,17.5,-.4]]
     .forEach(([x,z,r])=>torii(x,z,1.4,r));
     torii(0,2.8,1.1,0);stoneLantern(3.2,7);stoneLantern(-3.2,12);stoneLantern(3.2,16.5);},
   fact:'伏見稻荷大社有一萬多座紅色鳥居,排成長長的隧道綿延整座山!京都以前當了一千年的日本首都。'},
  {pref:'山梨縣',spot:'富士山與櫻花',desc:'櫻花樹間畫一個大 8 字!',t3:30,t2:44,
-  theme:{sky:['#6a88c8','#f0c8d4'],fog:0xf0c8d4,floor:0x2e5a3a,mount:0x51678f,grid:0x6b9e78,day:true},
+  theme:{sky360:'assets/sky/07_fuji.jpg',sky:['#6a88c8','#f0c8d4'],fog:0xf0c8d4,floor:0x2e5a3a,mount:0x51678f,grid:0x6b9e78,day:true},
   stars:[[0,1.2,9],[1.8,1.2,7.4],[3.4,1.2,9],[1.8,1.2,10.6],[0,1.2,9.2],[-1.8,1.2,10.6],[-3.4,1.2,9],[-1.8,1.2,7.4],[0,1.4,9]],
   decor(){fuji(0,42);sakura(1.8,9,1.1);sakura(-1.8,9,1.1);
     sakura(4.5,5,.9);sakura(-4.5,6,.85);sakura(4.5,13,.9);sakura(-4.5,14,.85);},
   amb:{color:0xffb7d5,size:.12,vy:-.55,vx:.5,op:.9},
   fact:'富士山高 3776 公尺,是日本第一高峰!山頂一年大部分時間都有積雪,天氣好時從東京也看得到。'},
  {pref:'東京都',spot:'東京鐵塔夜景',desc:'高樓之間追會飄的星星!',t3:34,t2:50,
-  theme:{sky:['#05060f','#141b36'],fog:0x141b36,mount:0x0c1226,grid:0x4a6be8},
+  theme:{sky360:'assets/sky/08_tokyo.jpg',sky:['#05060f','#141b36'],fog:0x141b36,mount:0x0c1226,grid:0x4a6be8},
   stars:[{p:[0,1.4,5],mv:{ax:'x',amp:1.4,sp:1.6,ph:0}},{p:[2,1.2,7.5],mv:{ax:'y',amp:.9,sp:2,ph:1}},
     {p:[-2,1.6,9],mv:{ax:'y',amp:1,sp:1.7,ph:2}},{p:[0,2,11],mv:{ax:'x',amp:2,sp:1.3,ph:3}},
     {p:[2.2,1.2,13],mv:{ax:'x',amp:1.2,sp:2.1,ph:4}},{p:[-2.2,1.8,14.5],mv:{ax:'y',amp:1,sp:1.5,ph:5}},
@@ -696,7 +716,7 @@ const LEVELS=[
     .forEach(([x,z,w,h,c])=>building(x,z,w,h,0x141b30,c));},
   fact:'東京是日本的首都,人口超過一千萬!紅白色的東京鐵塔高 333 公尺,晚上會點燈,非常漂亮。'},
  {pref:'青森縣',spot:'蘋果園迷宮',desc:'穿過果樹牆的缺口!撞牆會被彈開',t3:34,t2:50,
-  theme:{sky:['#2a160c','#a85a26'],fog:0xa85a26,floor:0x2c3a14,mount:0x3c2210,grid:0xc07a2e},
+  theme:{sky360:'assets/sky/09_aomori.jpg',sky:['#2a160c','#a85a26'],fog:0xa85a26,floor:0x2c3a14,mount:0x3c2210,grid:0xc07a2e},
   wallsDef:[[1.5,1.25,7,4.5,2.5,.4],[-1.5,1.25,10.5,4.5,2.5,.4],[0,.9,14,6,1.8,.4]],
   wallColor:0x2e6b3a,
   stars:[[0,1.2,4.5],[-2.2,1.2,7],[-2.2,1.2,8.8],[1.8,1.4,10.5],[1.8,1.2,12.3],[0,2.6,14],[0,1.4,15.8],[1.5,1.8,17.2],[-1.5,1.8,17.2]],
@@ -705,7 +725,7 @@ const LEVELS=[
   amb:{color:0xd9822b,size:.11,vy:-.7,vx:.4,op:.7},
   fact:'青森的蘋果產量是日本第一!全日本每兩顆蘋果,就有一顆來自青森。白色的弘前城春天被櫻花包圍超美。'},
  {pref:'北海道',spot:'札幌雪祭終點站',desc:'最終關!雪中大冒險,終點超大星星!',t3:52,t2:75,
-  theme:{sky:['#9fc4e8','#eef5fb'],fog:0xdcecf7,floor:0xdfe9f2,mount:0xb8d0e2,grid:0x9fc4d8,day:true},
+  theme:{sky360:'assets/sky/10_sapporo.jpg',sky:['#9fc4e8','#eef5fb'],fog:0xdcecf7,floor:0xdfe9f2,mount:0xb8d0e2,grid:0x9fc4d8,day:true},
   gatesDef:[[0,1.6,14.8,0],[0,2.2,16.2,0]],
   stars:[[0,1.2,3],[0,1.2,5],[0,1.4,7],
     [2,1.9,8.5],[2.6,2.5,10.5],[1.4,2.9,12.3],
@@ -822,9 +842,15 @@ function loadLevel(i,preview=false){
   walls=[];anims=[];
   while(levelGroup.children.length)levelGroup.remove(levelGroup.children[0]);
   const L=LEVELS[i],T=L.theme;
-  L._sky=L._sky||skyTex(T.sky[0],T.sky[1]);
+  if(!L._sky){
+    L._sky=skyTex(T.sky[0],T.sky[1]);            /* 佔位:全景圖載入前先用漸層,不要空白 */
+    if(T.sky360&&!lowPerf)loadPano(T.sky360,tex=>{
+      L._sky=tex;L._pano=true;
+      if(curLv===i){scene.background=tex;applyEnv(T,tex,true);} /* 還在同一關才換,免得跳關後蓋錯 */
+    });
+  }
   scene.background=L._sky;
-  applyEnv(T,L._sky);
+  applyEnv(T,L._sky,!!L._pano);
   scene.fog=T.day?new THREE.Fog(T.fog,26,85):new THREE.Fog(T.fog,20,60);
   floorMat.color.copy(T.floor?new THREE.Color(T.floor):new THREE.Color(T.fog).multiplyScalar(.28));
   mountMat.color.setHex(T.mount);
