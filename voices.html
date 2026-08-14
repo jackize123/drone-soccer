@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>旁白語音試聽台</title>
+<meta name="theme-color" content="#04070d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..900&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 與全站共用的賽事轉播色系 */
+  --void:#04070d; --deck:#0a101a; --riser:#111c2a;
+  --edge:#1e2d40; --hairline:#16222f;
+  --ink:#eaf2fb; --ink-mid:#8fa5bf; --ink-low:#55697f;
+  --led:#35e8cf; --blue:#2f7dff; --red:#ff3d61; --signal:#ffa33d; --gold:#ffd23f;
+  --display:"Archivo","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  --cjk:"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif;
+  --mono:"IBM Plex Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:
+    radial-gradient(1100px 560px at 72% -8%, rgba(47,125,255,.10), transparent 62%),
+    radial-gradient(880px 480px at 8% 108%, rgba(255,61,97,.07), transparent 62%),
+    var(--void);
+  color:var(--ink); font-family:var(--cjk); line-height:1.75;
+  -webkit-font-smoothing:antialiased; padding:26px 18px 60px;
+}
+.wrap{max-width:900px; margin:0 auto}
+.homelink{
+  display:inline-block; font-family:var(--mono); font-size:.72rem; letter-spacing:.16em;
+  color:var(--ink-low); text-decoration:none; margin-bottom:14px;
+}
+.homelink:hover{color:var(--led)}
+h1{font-family:var(--display); font-weight:900; font-stretch:112%;
+  font-size:clamp(1.5rem,4vw,2.1rem); margin:0 0 .3em; letter-spacing:-.01em}
+.lede{color:var(--ink-mid); font-size:.9rem; margin:0 0 22px; max-width:46em}
+
+/* 環境狀態列 */
+.env{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px;
+  background:var(--hairline); border:1px solid var(--edge); border-radius:5px;
+  overflow:hidden; margin-bottom:20px;
+}
+.env div{background:var(--deck); padding:11px 14px}
+.env .k{font-family:var(--mono); font-size:.58rem; letter-spacing:.2em; color:var(--ink-low)}
+.env .v{font-family:var(--mono); font-size:.9rem; color:var(--led); margin-top:2px}
+.env .v.warn{color:var(--signal)}
+
+.banner{
+  border:1px solid rgba(255,163,61,.35); border-left:3px solid var(--signal);
+  background:rgba(255,163,61,.06); border-radius:4px;
+  padding:14px 17px; margin-bottom:22px; font-size:.87rem; line-height:1.9;
+}
+.banner b{color:var(--signal)}
+.banner code{
+  font-family:var(--mono); font-size:.85em; background:rgba(4,7,13,.6);
+  border:1px solid var(--hairline); border-radius:3px; padding:.15em .5em; color:var(--ink);
+}
+
+.bar{display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:16px}
+.bar label{font-family:var(--mono); font-size:.68rem; letter-spacing:.16em; color:var(--ink-low)}
+.bar input[type=range]{width:150px; accent-color:var(--led)}
+.bar .rv{font-family:var(--mono); font-size:.85rem; color:var(--led); min-width:3.4em}
+.bar select{
+  background:var(--deck); border:1px solid var(--edge); color:var(--ink);
+  border-radius:4px; padding:.45em .6em; font-family:var(--cjk); font-size:.85rem; max-width:100%;
+}
+
+/* 語音卡 */
+.list{display:flex; flex-direction:column; gap:10px}
+.vrow{
+  display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:12px; align-items:center;
+  border:1px solid var(--edge); border-radius:5px; padding:14px 16px;
+  background:linear-gradient(180deg,var(--riser),var(--deck)); transition:border-color .18s;
+}
+.vrow:hover{border-color:var(--ink-low)}
+.vrow.on{border-color:var(--led); box-shadow:0 0 0 1px rgba(53,232,207,.25)}
+.vrow .nm{font-weight:700; font-size:1rem}
+.vrow .meta{font-family:var(--mono); font-size:.66rem; letter-spacing:.1em; color:var(--ink-low); margin-top:3px}
+.tier{
+  display:inline-block; font-family:var(--mono); font-size:.6rem; letter-spacing:.12em;
+  border-radius:2px; padding:.2em .5em; margin-right:7px;
+}
+.tier.t2{color:#0a1a17; background:var(--led); font-weight:700}
+.tier.t1{color:var(--blue); border:1px solid rgba(47,125,255,.5)}
+.tier.t0{color:var(--ink-low); border:1px solid var(--hairline)}
+button{
+  font-family:var(--display); font-weight:700; cursor:pointer; border-radius:4px;
+  border:1px solid var(--edge); background:var(--riser); color:var(--ink);
+  padding:.6em 1.1em; font-size:.85rem; transition:border-color .15s, background .15s, color .15s;
+  white-space:nowrap;
+}
+button:hover{border-color:var(--led); color:var(--led)}
+button.use{background:var(--led); color:#02120f; border-color:var(--led)}
+button.use:hover{filter:brightness(1.08); color:#02120f}
+button.use.done{background:transparent; color:var(--led)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--led); outline-offset:3px}
+.empty{color:var(--ink-low); font-size:.9rem; padding:26px 0}
+
+footer{margin-top:30px; color:var(--ink-low); font-size:.78rem; line-height:1.95;
+  border-top:1px solid var(--hairline); padding-top:18px}
+footer a{color:var(--ink-mid)}
+@media (max-width:640px){
+  .vrow{grid-template-columns:1fr; gap:10px}
+  .vrow .btns{display:flex; gap:8px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="homelink" href="index.html">← 回首頁</a>
+  <h1>旁白語音試聽台</h1>
+  <p class="lede">列出這台裝置在<b>目前這個瀏覽器</b>裡能用的所有中文語音。按「試聽」會唸一句真正的課程旁白,語速跟影片一致;選定後按「設為旁白」,兩支教學影片就會改用它。</p>
+
+  <div class="env">
+    <div><div class="k">BROWSER 瀏覽器</div><div class="v" id="envBrowser">—</div></div>
+    <div><div class="k">VOICES 中文語音</div><div class="v" id="envCount">—</div></div>
+    <div><div class="k">BEST 最高世代</div><div class="v" id="envTier">—</div></div>
+    <div><div class="k">CURRENT 目前旁白</div><div class="v" id="envCur">—</div></div>
+  </div>
+
+  <div class="banner" id="upgrade" style="display:none"></div>
+
+  <div class="bar">
+    <label for="rate">語速</label>
+    <input type="range" id="rate" min="0.5" max="1.3" step="0.05" value="0.85">
+    <span class="rv" id="rateVal">0.85x</span>
+    <label for="sent" style="margin-left:8px">試聽句子</label>
+    <select id="sent">
+      <option>右搖桿管前後跟左右平移,推桿要小幅、緩慢,像捏著雞蛋一樣</option>
+      <option>一定要保持常開的狀態,定高開著,飛機才會自動鎖住高度</option>
+      <option>注意,空中斷電會直接摔機,落地後記得一秒內完成斷電</option>
+      <option>第二題四方位旋轉,每次轉動九十度停三秒,高度誤差二十公分內</option>
+      <option>來,我們現在來學天穹足球無人機遙控器</option>
+    </select>
+  </div>
+
+  <div class="list" id="list"><div class="empty">正在讀取語音清單⋯</div></div>
+
+  <footer>
+    語音由作業系統或瀏覽器提供,專案裡沒有任何音檔 —— 所以能用哪些聲音,取決於你用哪個瀏覽器開這一頁。<br>
+    設定會存在這台裝置的瀏覽器裡,對
+    <a href="video-controller.html">遙控器按鍵教學</a> 與
+    <a href="video-10drills.html">十關流程拆解</a> 同時生效。
+  </footer>
+</div>
+
+<script>
+const KEY='droneVidVoice2';
+const listEl=document.getElementById('list');
+const rateEl=document.getElementById('rate'), rateVal=document.getElementById('rateVal');
+const sentEl=document.getElementById('sent');
+let rate=parseFloat(localStorage.getItem('droneVidRate2')||'0.85');
+rateEl.value=rate; rateVal.textContent=rate.toFixed(2)+'x';
+rateEl.oninput=()=>{rate=parseFloat(rateEl.value); rateVal.textContent=rate.toFixed(2)+'x';};
+
+/* 語音世代 —— 差別比性別大得多。神經語音(Edge 的 Online、Windows 自然語音)
+   是目前最新的模型;本機標準是 Windows 內建多年的合成引擎。 */
+function tierOf(v){
+  if(/Online|Natural|Neural/i.test(v.name))return {t:2,label:'神經語音'};
+  if(v.localService===false||/Google/i.test(v.name))return {t:1,label:'雲端語音'};
+  return {t:0,label:'本機標準'};
+}
+const MALE=/Zhiwei|YunJhe|Kangkang|Yunxi|Yunyang|Yunjian|Yunye/i;
+const FEMALE=/Yating|Hanhan|HsiaoChen|HsiaoYu|Meijia|Xiaoxiao|Yaoyao|Tracy|Sinji/i;
+const sexOf=n=>MALE.test(n)?'男聲':FEMALE.test(n)?'女聲':'';
+
+function browserName(){
+  const ua=navigator.userAgent;
+  if(/Edg\//.test(ua))return 'Microsoft Edge';
+  if(/OPR\//.test(ua))return 'Opera';
+  if(/Firefox\//.test(ua))return 'Firefox';
+  if(/Chrome\//.test(ua))return 'Google Chrome';
+  if(/Safari\//.test(ua))return 'Safari';
+  return '其他';
+}
+
+function zhVoices(){
+  return speechSynthesis.getVoices()
+    .filter(v=>/^zh/i.test(v.lang))
+    .sort((a,b)=>{
+      const d=tierOf(b).t-tierOf(a).t; if(d)return d;
+      const tw=x=>/zh[-_]TW/i.test(x.lang)?1:0;
+      return tw(b)-tw(a);
+    });
+}
+
+/* 唸的時候套用跟影片一樣的韻律,才不會「試聽很好、實際不一樣」 */
+const EMPH=/注意|記得|千萬|立刻|一定要|不要|危險|重要|小心|絕對/;
+function jitter(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return ((h>>>0)%1000)/1000-.5}
+function preview(v){
+  speechSynthesis.cancel();
+  const t=sentEl.value;
+  const u=new SpeechSynthesisUtterance(t);
+  u.voice=v; u.lang=v.lang||'zh-TW';
+  const j=jitter(t);
+  let r=rate*(1+j*.05), p=.98+j*.07;
+  if(EMPH.test(t)){r*=.94; p+=.05}
+  u.rate=Math.max(.5,Math.min(1.6,r));
+  u.pitch=Math.max(.6,Math.min(1.4,p));
+  speechSynthesis.speak(u);
+}
+
+function render(){
+  const vs=zhVoices();
+  const cur=localStorage.getItem(KEY)||'';
+  document.getElementById('envBrowser').textContent=browserName();
+  document.getElementById('envCount').textContent=vs.length+' 個';
+  const best=vs.length?tierOf(vs[0]):null;
+  const tierEl=document.getElementById('envTier');
+  tierEl.textContent=best?best.label:'—';
+  tierEl.className='v'+(best&&best.t>=2?'':' warn');
+  const curV=vs.find(v=>v.name===cur);
+  document.getElementById('envCur').textContent=
+    curV?curV.name.replace(/^(Microsoft|Google|Apple)\s*/i,'').replace(/[（(].*$/,'').trim():'自動(挑最新)';
+
+  /* 沒有神經語音就告訴使用者去哪裡拿 —— 這是換到「新聲音」唯一的免費途徑 */
+  const up=document.getElementById('upgrade');
+  if(best&&best.t>=2){ up.style.display='none'; }
+  else{
+    up.style.display='';
+    up.innerHTML=browserName()==='Microsoft Edge'
+      ? '這個 Edge 沒有抓到線上神經語音。請確認<b>網路連線正常</b>,並到 Edge 設定確認沒有停用線上語音功能;重新整理這一頁再看看。'
+      : '你目前用的是 <b>'+browserName()+'</b>,它只看得到 Windows 內建的本機語音。'
+        +'要聽<b>新一代的神經語音</b>(HsiaoChen / HsiaoYu / YunJhe 等),用 <b>Microsoft Edge</b> 開這一頁就會多出來,不必安裝任何東西:<br>'
+        +'<code>start msedge "'+location.href+'"</code><br>'
+        +'或到 Windows 設定 → 協助工具 → 朗讀程式 → 新增自然語音,裝好之後這個瀏覽器也看得到。';
+  }
+
+  if(!vs.length){ listEl.innerHTML='<div class="empty">這個瀏覽器找不到任何中文語音。</div>'; return; }
+  listEl.innerHTML='';
+  vs.forEach(v=>{
+    const ti=tierOf(v), sx=sexOf(v.name);
+    const nm=v.name.replace(/^(Microsoft|Google|Apple)\s*/i,'').replace(/[（(].*$/,'').trim();
+    const row=document.createElement('div');
+    row.className='vrow'+(v.name===cur?' on':'');
+    row.innerHTML=
+      '<div><div class="nm">'+nm+'</div><div class="meta">'
+      +'<span class="tier t'+ti.t+'">'+ti.label+'</span>'
+      +v.lang+(sx?' · '+sx:'')+(v.localService===false?' · 需連網':'')
+      +'</div></div>'
+      +'<div class="btns"><button class="try">▶ 試聽</button> '
+      +'<button class="use'+(v.name===cur?' done':'')+'">'+(v.name===cur?'✓ 使用中':'設為旁白')+'</button></div>';
+    row.querySelector('.try').onclick=()=>preview(v);
+    row.querySelector('.use').onclick=()=>{
+      localStorage.setItem(KEY,v.name);
+      localStorage.setItem('droneVidRate2',rate);
+      render(); preview(v);
+    };
+    listEl.appendChild(row);
+  });
+}
+
+speechSynthesis.getVoices();
+speechSynthesis.onvoiceschanged=render;
+setTimeout(render,300);
+render();
+</script>
+</body>
+</html>
