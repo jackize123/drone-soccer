@@ -603,7 +603,7 @@ const stage=document.getElementById('stage'), subtitle=document.getElementById('
 let idx=0,t=0,lineIdx=-1,playing=false,voice=true,started=false,raf=null,last=0;
 /* key 帶版本號:換過預設值,舊的存檔要讓它失效,否則老使用者拿不到新的預設語速 */
 let rate=parseFloat(localStorage.getItem('droneVidRate2')||'0.85');
-let voiceName=localStorage.getItem('droneVidVoice')||'';
+let voiceName=localStorage.getItem('droneVidVoice2')||'';
 const total=S.reduce((a,s)=>a+s.dur,0);
 
 S.forEach((s,i)=>{
@@ -645,6 +645,18 @@ function voiceScore(v){
 function rankedVoices(){
   return speechSynthesis.getVoices().map(v=>({v,s:voiceScore(v)}))
     .filter(x=>x.s>=0).sort((a,b)=>b.s-a.s);
+}
+/* Web Speech API 不提供語音性別,只能靠已知名單認。用來在選單標示,
+   以及決定預設要挑哪一個。 */
+const MALE=/Zhiwei|YunJhe|Kangkang|Yunxi|Yunyang|Yunjian|Yunye/i;
+const FEMALE=/Yating|Hanhan|HsiaoChen|HsiaoYu|Meijia|Xiaoxiao|Yaoyao|Tracy|Sinji/i;
+function voiceSex(n){return MALE.test(n)?'男聲':FEMALE.test(n)?'女聲':''}
+/* 預設語音:優先挑男聲。裝置上通常只有兩三個中文語音,而且多半是女聲;
+   同性別的另一個往往只是更舊的版本,換了跟沒換一樣 —— 換音色才有意義。
+   使用者仍可用 🎧 試聽切換,選擇會被記住。 */
+function defaultVoice(){
+  const r=rankedVoices();
+  return ((r.find(x=>MALE.test(x.v.name))||r[0])||{}).v||null;
 }
 function bestVoice(){const r=rankedVoices();return r.length?r[0].v:null}
 
@@ -729,15 +741,17 @@ const EMPH=/注意|記得|千萬|立刻|一定要|不要|危險|重要|小心|�
 
 let speaking=false;      /* 目前是否還有旁白在唸 */
 let speakDeadline=0;     /* 這句最晚該唸完的時間,見 loop() 的保險閥 */
+let speakSeq=0;          /* 每次朗讀的序號,用來擋掉上一句的非同步回呼 */
 /* force=true 用於試聽:即使旁白關閉也會唸,而且不會讓時間軸為它等待 */
 function speak(txt,force){
   if(!('speechSynthesis' in window))return;
+  const my=++speakSeq;
   speechSynthesis.cancel(); speaking=false;
   if(!voice&&!force)return;
   const t=normalize(txt);
   if(!t)return;
   const u=new SpeechSynthesisUtterance(t);
-  const v=speechSynthesis.getVoices().find(x=>x.name===voiceName)||bestVoice();
+  const v=speechSynthesis.getVoices().find(x=>x.name===voiceName)||defaultVoice();
   if(v)u.voice=v;
   u.lang='zh-TW';
   const j=jitter(t);
@@ -752,8 +766,12 @@ function speak(txt,force){
   /* speaking 讓時間軸知道「這句還沒唸完」,見 loop() 的 hold。
      試聽不算旁白,不設 speaking,免得影片停在原地等試聽唸完。 */
   if(!force){
-    u.onend=()=>{speaking=false};
-    u.onerror=()=>{speaking=false};
+    /* 序號檢查不能省:上面的 cancel() 觸發的是「上一句」的 onend,而且是非同步的,
+       會在這一句已經開始之後才跑(實測差 15ms)。沒有這道檢查,上一句的 onend
+       會把這一句的 speaking 清成 false,hold 隨之失效,這一句就被下一句砍斷 ——
+       那就是聽起來斷斷續續的殘留原因。 */
+    u.onend=()=>{if(my===speakSeq)speaking=false};
+    u.onerror=()=>{if(my===speakSeq)speaking=false};
     speaking=true;
     /* 保險閥的期限。不能用固定秒數 —— 語速拉到最慢時,長句要唸 10 秒以上,
        固定 8 秒會誤判成「引擎卡住」而放行,下一句的 cancel() 就把它砍斷,
@@ -851,11 +869,12 @@ rateEl.onchange=()=>{if(lineIdx>=0&&voice&&playing)speak(S[idx].lines[lineIdx][1
 function popVoices(){
   if(!('speechSynthesis' in window))return;
   const ranked=rankedVoices();
-  const bestName=ranked.length?ranked[0].v.name:'';
-  vsel.innerHTML='<option value="">自動挑最自然的</option>'+
+  const def=defaultVoice();
+  vsel.innerHTML='<option value="">自動(預設男聲)</option>'+
     ranked.map(({v})=>{
       const nm=v.name.replace(/^(Microsoft|Google|Apple)\s*/i,'').replace(/[((].*$/,'').trim();
-      return `<option value="${v.name}">${nm}${v.name===bestName?' ★':''}</option>`;
+      const sex=voiceSex(v.name);
+      return `<option value="${v.name}">${nm}${sex?' · '+sex:''}${def&&v.name===def.name?' ★':''}</option>`;
     }).join('');
   vsel.value=ranked.some(x=>x.v.name===voiceName)?voiceName:'';
   /* 一個線上神經語音都沒有 —— 本機 SAPI 語音再怎麼調也差一截,直接告訴使用者去哪裡拿 */
@@ -865,7 +884,7 @@ function popVoices(){
 /* 試聽:換聲音時自動唸一句,才能直接 A/B 比較 */
 const DEMO='第六題正方形航路,每個轉角停三秒';
 document.getElementById('vtest').onclick=()=>speak(DEMO,true);
-vsel.onchange=()=>{voiceName=vsel.value;localStorage.setItem('droneVidVoice',voiceName);
+vsel.onchange=()=>{voiceName=vsel.value;localStorage.setItem('droneVidVoice2',voiceName);
   if(lineIdx>=0&&voice&&playing)speak(S[idx].lines[lineIdx][1]);
   else speak(DEMO,true);};
 if('speechSynthesis' in window){popVoices();speechSynthesis.onvoiceschanged=popVoices;}
