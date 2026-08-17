@@ -210,17 +210,24 @@ const GROUND={
   grass:       {rep:90},
   sand:        {rep:22,tint:0xb08f5e},   /* 原圖近白,不壓下來整片會爆掉 */
   volcanic:    {rep:40,tint:0x4a4038},   /* 櫻島是火山灰地,原圖中灰又被藍天光染色 */
-  stone_path:  {rep:45},
+  /* 45 太密,石板碎成一片苔蘚雜訊,不像神社參道 —— 石板本身就是大塊的,
+     重複次數要跟著真實尺度壓下來 */
+  stone_path:  {rep:14},
   asphalt_city:{rep:55},
+  /* snow 重做過了(舊版是 Voronoi 泡泡圖,鋪出來像氣泡紙)。新版是細風紋雪面,
+     但雪本身幾乎沒對比,配上同樣白的雪景全景會讓整關糊成一片、連星星都看不見
+     —— 所以 tint 壓一層藍灰把地面和天空分開,這比調 rep 有效。 */
+  snow:        {rep:26,tint:0xa9c2dd},
 };
-/* snow.jpg 目前不用 —— 那張是 Voronoi 泡泡圖案,鋪出來像氣泡紙,
-   任何 rep 值都救不回來(形狀本質就不是雪)。第 10 關維持純白地板 +
-   既有的程序法線,反而乾淨。要重做素材再接回來。 */
+/* 換掉任何貼圖素材時,把這個數字 +1。
+   貼圖和 HTML 是不同的 URL —— 改了 HTML 不會讓貼圖的快取失效,
+   已經玩過的人會一直吃到舊貼圖(自己在本機看到的和玩家看到的不一樣,很難察覺)。 */
+const ASSET_V='2';
 const _tileCache={};
 function loadTile(url,rep,cb){
   const key=url+'@'+rep;
   if(_tileCache[key]){cb(_tileCache[key]);return;}
-  new THREE.TextureLoader().load(url,tex=>{
+  new THREE.TextureLoader().load(url+'?v='+ASSET_V,tex=>{
     tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
     tex.repeat.set(rep,rep);
     tex.encoding=THREE.sRGBEncoding;
@@ -254,7 +261,7 @@ function loadPano(url,cb){
 const _impCache={};
 function loadImpostor(name,cb){
   if(_impCache[name]){cb(_impCache[name]);return;}
-  new THREE.TextureLoader().load('assets/impostor/'+name+'.png',tex=>{
+  new THREE.TextureLoader().load('assets/impostor/'+name+'.png?v='+ASSET_V,tex=>{
     tex.encoding=THREE.sRGBEncoding;
     _impCache[name]=tex;cb(tex);
   },undefined,()=>{});                      /* 載不到就靜靜跳過,不要炸掉整關 */
@@ -298,6 +305,30 @@ function glowTex(){
   return new THREE.CanvasTexture(cv);
 }
 const GLOWTEX=glowTex();
+
+/* 夜景大樓的窗格 —— 畫一次 canvas 當自發光貼圖重複使用。
+   第 8 關有 8 棟樓,如果每扇窗都放一個發光方塊會有上千個 mesh。
+   刻意讓約三成的窗戶暗著:整片全亮看起來像格子紙,不像有人住的大樓。
+   固定亂數種子,免得每次重載關卡窗戶位置都在跳。 */
+let _winTex=null;
+function windowTex(){
+  if(_winTex)return _winTex;
+  const cv=document.createElement('canvas');cv.width=cv.height=128;
+  const g=cv.getContext('2d');
+  g.fillStyle='#0a0f1c';g.fillRect(0,0,128,128);
+  let seed=20260817;
+  const rnd=()=>((seed=seed*16807%2147483647)/2147483647);
+  for(let row=0;row<8;row++)for(let col=0;col<6;col++){
+    if(rnd()<.32)continue;                        /* 沒開燈的住戶 */
+    g.fillStyle=rnd()<.25?'#ffd9a0':'#cfe4ff';    /* 少數暖黃,其餘冷白 */
+    g.globalAlpha=.5+rnd()*.5;
+    g.fillRect(7+col*20,8+row*15,10,8);
+  }
+  g.globalAlpha=1;
+  _winTex=new THREE.CanvasTexture(cv);
+  _winTex.wrapS=_winTex.wrapT=THREE.RepeatWrapping;
+  return _winTex;
+}
 
 /* ===== 程序式 PBR 貼圖(canvas 生成,免外部檔案) ===== */
 function heightToNormal(src,strength){
@@ -607,6 +638,10 @@ function castle(x,z,s=1,wallC=0xf2ead8,roofC=0x3a5a46,style='generic'){
   collider(x,y*.5,z,cfg.wide*s*1.05,y,cfg.wide*s*1.05); /* 城堡實體 */
   return g;}
 function volcano(x,z){
+  /* 天空全景本身就是真的櫻島照片(連噴煙都有),再放一座低多邊形火山會變成兩座。
+     而且這座在 z=34、霧範圍 20~60 的濃區,深棕色會被霧染成粉橘,跟照片裡的
+     灰黑火山完全不搭。手機不載全景,才需要這座 3D 版本頂著。 */
+  if(panoHasLandmark())return;
   const v=new THREE.Mesh(new THREE.ConeGeometry(13,9,7),lamb(0x4a2c24));
   v.position.set(x,4.5,z);levelGroup.add(v);
   const crater=new THREE.Mesh(new THREE.CylinderGeometry(2.4,3.4,1.1,7),lamb(0x2a1812));
@@ -629,11 +664,14 @@ function panoHasLandmark(){
   return !lowPerf&&LEVELS[curLv]&&LEVELS[curLv].theme&&!!LEVELS[curLv].theme.sky360;
 }
 function fuji(x,z){
-  for(const dx of[-12,12]){                      /* 兩側小丘是中景,保留 */
+  /* 兩側小丘原本當中景保留,實測不行:它們在 z=45、霧範圍 26~85 的濃區,
+     藍灰色被粉色霧染成死白,疊在真的富士山照片上像兩張白紙片。
+     有全景照片時整組都交給照片,一起擋掉。 */
+  if(panoHasLandmark())return;
+  for(const dx of[-12,12]){
     const hill=new THREE.Mesh(new THREE.ConeGeometry(10,5.5,8),lamb(0x40577b));
     hill.position.set(x+dx,2.75,z+3);levelGroup.add(hill);
   }
-  if(panoHasLandmark())return;                   /* 主山交給天空照片 */
   const c=new THREE.Mesh(new THREE.ConeGeometry(17,11,9),lamb(0x51678f));
   c.position.set(x,5.5,z);levelGroup.add(c);
   const cap=new THREE.Mesh(new THREE.ConeGeometry(7.2,4.7,9),lamb(0xf4f7fb));
@@ -674,7 +712,17 @@ function neon(x,z,color,h=2.7){
     transparent:true,opacity:.75,blending:THREE.AdditiveBlending,depthWrite:false}));
   gl.scale.setScalar(2.4);gl.position.set(x,h*.62,z);levelGroup.add(gl);collider(x,h/2,z,.3,h,.3);}
 function building(x,z,w,h,color=0x141b30,winColor=0xffd166){
-  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,w),lamb(color));
+  /* 原本只有一個純色方塊 + 屋頂一顆光暈,winColor 根本沒用在牆面上,
+     所以看起來就是一根藍色積木。改成掛自發光窗格貼圖:方塊本身仍吃場景
+     光照與霧(所以會融進夜景),窗戶則自己發光,不受光照影響。 */
+  const mat=lamb(color);
+  const tex=windowTex().clone();tex.needsUpdate=true;
+  /* 依樓的實際尺寸決定窗格重複次數,免得矮樓的窗戶被拉長成長條 */
+  tex.repeat.set(Math.max(1,Math.round(w)),Math.max(2,Math.round(h*.55)));
+  mat.emissiveMap=tex;
+  mat.emissive=new THREE.Color(winColor);
+  if('emissiveIntensity' in mat)mat.emissiveIntensity=.9;
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,w),mat);
   m.position.set(x,h/2,z);levelGroup.add(m);
   const e=new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry),
     new THREE.LineBasicMaterial({color:0x4a5a8a,transparent:true,opacity:.7}));
@@ -683,18 +731,29 @@ function building(x,z,w,h,color=0x141b30,winColor=0xffd166){
     transparent:true,opacity:.35,blending:THREE.AdditiveBlending,depthWrite:false}));
   gl.scale.setScalar(1.3);gl.position.set(x,h+.15,z);levelGroup.add(gl);collider(x,h/2,z,w,h,w);}
 function tokyoTower(x,z,s=1){
-  const c1=new THREE.Mesh(new THREE.ConeGeometry(2*s,5.6*s,4),lamb(0xe8543a));
-  c1.position.set(x,2.8*s,z);c1.rotation.y=Math.PI/4;levelGroup.add(c1);
-  const e=new THREE.LineSegments(new THREE.EdgesGeometry(c1.geometry),
-    new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.6}));
-  e.position.copy(c1.position);e.rotation.copy(c1.rotation);levelGroup.add(e);
-  const deck=new THREE.Mesh(new THREE.BoxGeometry(1.5*s,.35*s,1.5*s),lamb(0xf2f2f2));
-  deck.position.set(x,3.5*s,z);levelGroup.add(deck);
-  const ant=new THREE.Mesh(new THREE.CylinderGeometry(.05*s,.1*s,2.2*s,6),lamb(0xe8543a));
-  ant.position.set(x,6.6*s,z);levelGroup.add(ant);
+  /* 東京鐵塔是鏤空鋼架。原本用「實心四角錐 + 四條邊線」,遠看就是一塊塑膠三角。
+     改成半透明錐體打底 + WireframeGeometry 拉出格狀桁架 —— 幾何的分段數就是
+     格子數,4 邊 × 5 段剛好看得出鋼構,再多會糊成一團線。
+     另外分成上下兩段(真的鐵塔就是下粗上細),輪廓才對得起來。
+     顏色用國際橘 0xf0592b,原本的 0xe8543a 偏粉紅。 */
+  const ORANGE=0xf0592b;
+  const lineM=new THREE.LineBasicMaterial({color:ORANGE,transparent:true,opacity:.95});
+  const part=(geo,y)=>{
+    const m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({
+      color:ORANGE,transparent:true,opacity:.3}));
+    m.position.set(x,y,z);m.rotation.y=Math.PI/4;levelGroup.add(m);
+    const w=new THREE.LineSegments(new THREE.WireframeGeometry(geo),lineM);
+    w.position.copy(m.position);w.rotation.copy(m.rotation);levelGroup.add(w);
+  };
+  part(new THREE.CylinderGeometry(.62*s,2.05*s,4.2*s,4,5),2.1*s);   /* 下段:粗,桁架密 */
+  part(new THREE.CylinderGeometry(.2*s,.58*s,2.0*s,4,3),5.2*s);     /* 上段:細 */
+  const deck=new THREE.Mesh(new THREE.BoxGeometry(1.5*s,.3*s,1.5*s),lamb(0xf2f2f2));
+  deck.position.set(x,4.2*s,z);levelGroup.add(deck);                /* 大展望台 */
+  const ant=new THREE.Mesh(new THREE.CylinderGeometry(.04*s,.08*s,1.5*s,6),lamb(0xf2f2f2));
+  ant.position.set(x,6.95*s,z);levelGroup.add(ant);
   const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOWTEX,color:0xffb166,
     transparent:true,opacity:.8,blending:THREE.AdditiveBlending,depthWrite:false}));
-  gl.scale.setScalar(2.2);gl.position.set(x,7.7*s,z);levelGroup.add(gl);collider(x,3*s,z,2.4*s,6*s,2.4*s);}
+  gl.scale.setScalar(2.2);gl.position.set(x,7.8*s,z);levelGroup.add(gl);collider(x,3*s,z,2.4*s,6*s,2.4*s);}
 function sapporoTower(x,z){
   const col=new THREE.Mesh(new THREE.BoxGeometry(.8,5.4,.8),lamb(0x8a94a2));
   col.position.set(x,2.7,z);levelGroup.add(col);
@@ -748,10 +807,14 @@ function collider(x,y,z,w,h,d){walls.push({position:new THREE.Vector3(x,y,z),_aa
 function zig(n,x0,x1,z0,dz,y){const a=[];for(let i=0;i<n;i++)a.push([i%2?x1:x0,y,z0+i*dz]);return a;}
 const LEVELS=[
  {pref:'沖繩縣',spot:'守禮門與南國海灘',desc:'沿著椰子樹大道直線飛行!',t3:14,t2:22,
-  theme:{ground:'sand',sky360:'assets/sky/01_okinawa.jpg',sky:['#3aa8dd','#bfeaf7'],fog:0x9fdcef,floor:0x117a8a,mount:0x2e8fae,grid:0x2ad4c8,day:true},
+  theme:{ground:'sand',sky360:'assets/sky/01_okinawa.jpg',sky:['#3aa8dd','#bfeaf7'],fog:0x9fdcef,floor:0x117a8a,mount:0x2e8fae,grid:0x2ad4c8,day:true,
+    /* 站名就叫「守禮門」,原本卻擺一座鳥居頂替 —— 換成真的守禮門立面圖。
+       位置放在最後一顆星(z=18)之後,實體方塊才不會擋住取星路線。 */
+    landmark:['shurijo',0,22,5.5,4]},
   stars:Array.from({length:8},(_,i)=>[0,1.2,4+i*2]),
   decor(){for(let z=4;z<=16;z+=4){palm(3.2,z);palm(-3.2,z);}
-    torii(0,19,1.9,0,0xc0392b);},
+    /* 站名寫「南國海灘」卻連海都看不到,補一片遠方的海 */
+    water(0,40,140,30,0x1aa3c4);},
   fact:'沖繩是日本最南端的縣,以前是「琉球王國」!有透明的藍色大海和珊瑚礁,紅色的守禮門是首里城的大門。'},
  {pref:'鹿兒島縣',spot:'櫻島火山',desc:'火山灰飄落!左右蛇行前進',t3:20,t2:30,
   theme:{ground:'volcanic',sky360:'assets/sky/02_sakurajima.jpg',sky:['#2a1430','#c2542e'],fog:0xc2542e,mount:0x33161f,grid:0x8a4a2e},
@@ -821,7 +884,9 @@ const LEVELS=[
   amb:{color:0xd9822b,size:.11,vy:-.7,vx:.4,op:.7},
   fact:'青森的蘋果產量是日本第一!全日本每兩顆蘋果,就有一顆來自青森。白色的弘前城春天被櫻花包圍超美。'},
  {pref:'北海道',spot:'札幌雪祭終點站',desc:'最終關!雪中大冒險,終點超大星星!',t3:52,t2:75,
-  theme:{ground:'snow',sky360:'assets/sky/10_sapporo.jpg',sky:['#9fc4e8','#eef5fb'],fog:0xdcecf7,floor:0xdfe9f2,mount:0xb8d0e2,grid:0x9fc4d8,day:true},
+  /* 霧色從 0xdcecf7 壓深:雪地本來就沒對比,再被近乎白色的霧染過去,
+     地面和雪景天空會糊成同一片,星星整個埋進去看不見。 */
+  theme:{ground:'snow',sky360:'assets/sky/10_sapporo.jpg',sky:['#9fc4e8','#eef5fb'],fog:0xa8c4dc,floor:0xdfe9f2,mount:0xb8d0e2,grid:0x9fc4d8,day:true},
   gatesDef:[[0,1.6,14.8,0],[0,2.2,16.2,0]],
   stars:[[0,1.2,3],[0,1.2,5],[0,1.4,7],
     [2,1.9,8.5],[2.6,2.5,10.5],[1.4,2.9,12.3],
