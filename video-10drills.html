@@ -306,14 +306,14 @@ svg text{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif}
 
   <footer>
     ⚽ 十題規則與訓練場遊戲完全同步|穩定・精準・流暢<br>
-    語音旁白使用裝置內建語音(iPad 請開啟音量);控制列可選旁白聲音、拉動滑桿調整語速;點章節可直接跳題複習。
+    語音旁白為預先錄製的台灣神經語音(iPad 請開啟音量);拉動滑桿可調整語速;點章節可直接跳題複習。
     <div style="margin-top:8px"><a href="voices.html" style="color:var(--hud);text-decoration:none;font-family:var(--mono);font-size:12px;letter-spacing:1px">🎚 開啟語音試聽台 —— 比較所有可用的聲音並切換 →</a></div>
+    <!-- 這段只在「退回瀏覽器現場合成」時才顯示 —— 正常情況播的是預錄音檔,
+         使用者不需要知道也不必安裝任何語音。 -->
     <div id="voicetip" style="display:none;margin-top:8px;color:var(--gold);line-height:1.9">
-      目前使用:<b class="now">—</b>。這是 Windows 內建多年的語音,合成感較重。<br>
-      要用<b>最新的語音模型</b>,兩個方法二選一:<br>
-      ① 用 <b>Microsoft Edge</b> 開啟這一頁 —— 選單會多出「HsiaoChen Online」「YunJhe Online」等
-      神經語音,自然度差一個世代,不必安裝任何東西。<br>
-      ② Windows 設定 → 協助工具 → 朗讀程式 → 新增自然語音,安裝中文自然語音後,Chrome 也看得到。
+      預錄旁白載入失敗,目前改用裝置內建語音:<b class="now">—</b>,合成感較重。<br>
+      重新整理通常就會恢復;若持續失敗,可改用 <b>Microsoft Edge</b> 開啟這一頁,
+      選單會多出「HsiaoChen Online」等神經語音,自然度接近預錄版本。
     </div>
   </footer>
 </div>
@@ -605,7 +605,10 @@ const stage=document.getElementById('stage'), subtitle=document.getElementById('
 
 let idx=0,t=0,lineIdx=-1,playing=false,voice=true,started=false,raf=null,last=0;
 /* key 帶版本號:換過預設值,舊的存檔要讓它失效,否則老使用者拿不到新的預設語速 */
-let rate=parseFloat(localStorage.getItem('droneVidRate2')||'0.85');
+/* 預設值從 0.85 改回 1.0:0.85 是為了拖慢舊 SAPI 語音的機械感,
+   換成預錄的神經語音之後,1.0 才是它原本的自然語速,再放慢反而拖沓。
+   key 跟著進版,舊使用者存的 0.85 要讓它失效。 */
+let rate=parseFloat(localStorage.getItem('droneVidRate3')||'1.0');
 let voiceName=localStorage.getItem('droneVidVoice2')||'';
 /* 網址加 ?voice=Hanhan 就直接用那個聲音,方便 A/B 比較。
    只比對名稱關鍵字,大小寫不拘;這是臨時覆蓋,不會寫進 localStorage —— 想長期
@@ -762,12 +765,65 @@ const EMPH=/注意|記得|千萬|立刻|一定要|不要|危險|重要|小心|�
 let speaking=false;      /* 目前是否還有旁白在唸 */
 let speakDeadline=0;     /* 這句最晚該唸完的時間,見 loop() 的保險閥 */
 let speakSeq=0;          /* 每次朗讀的序號,用來擋掉上一句的非同步回呼 */
+
+/* ══════════════════════════════════════════════════════════
+   預錄旁白(優先於現場合成)
+   現場合成最根本的問題是「聲音取決於使用者那台機器裝了什麼」——
+   同一份教材在不同電腦、手機、iPad 上聽起來完全不同,而且多數 Windows
+   只有舊的 SAPI 語音,合成感很重,上面那一整套挑語音的邏輯也只能挑「現有的
+   裡面最好的」,挑不出沒安裝的東西。
+   改用事先產好的 zh-TW 神經語音音檔(產生器見 D:\ai-imagegen\gen_tts.py),
+   任何裝置聽到的都是同一個聲音,不必要求使用者去安裝任何語音。
+
+   對照表刻意以「原始台詞」為 key,不是編號:
+   日後有人改了某句台詞,查不到對應音檔就會自動退回現場合成,
+   不會播出跟字幕對不起來的舊聲音。
+   ══════════════════════════════════════════════════════════ */
+const NARR_DIR='assets/narration/';
+let clipMap=null;                       /* null = 還沒載到\沒有預錄音檔 */
+let clipVoice='';
+const clipAudio=new Audio();
+clipAudio.preload='auto';
+function stopClip(){try{clipAudio.pause();clipAudio.currentTime=0}catch(e){}}
+fetch(NARR_DIR+'manifest.json')
+  .then(r=>r.ok?r.json():null)
+  .then(m=>{if(m&&m.clips){clipMap=m.clips;clipVoice=m.voice||'';popVoices();}})
+  .catch(()=>{});                       /* 載不到就靜靜維持現場合成 */
 /* force=true 用於試聽:即使旁白關閉也會唸,而且不會讓時間軸為它等待 */
 function speak(txt,force){
-  if(!('speechSynthesis' in window))return;
   const my=++speakSeq;
-  speechSynthesis.cancel(); speaking=false;
+  stopClip();
+  if('speechSynthesis' in window)speechSynthesis.cancel();
+  speaking=false;
   if(!voice&&!force)return;
+
+  /* 有預錄音檔就用它 —— 這條路徑不需要 speechSynthesis,所以連不支援
+     Web Speech API 的瀏覽器(部分 iOS 舊版)也聽得到旁白。 */
+  const file=clipMap&&clipMap[txt];
+  if(file){
+    clipAudio.src=NARR_DIR+file;
+    /* 滑桿值直接就是播放速率。playbackRate 在現代瀏覽器會做保音高處理,
+       不會變成花栗鼠聲;現場合成那條路徑則是餵給 utterance.rate。 */
+    clipAudio.playbackRate=Math.max(.5,Math.min(2,rate));
+    if(!force){
+      const done=()=>{if(my===speakSeq)speaking=false};
+      clipAudio.onended=done;clipAudio.onerror=done;
+      speaking=true;
+      /* 保險閥:先給一個寬鬆值,等 metadata 載進來知道實際長度再收緊。
+         音檔長度是確定的,不必像現場合成那樣用字數去猜。 */
+      speakDeadline=performance.now()+20000;
+      clipAudio.onloadedmetadata=()=>{
+        if(my===speakSeq&&isFinite(clipAudio.duration))
+          speakDeadline=performance.now()+
+            clipAudio.duration*1000/clipAudio.playbackRate+1200;
+      };
+    }
+    clipAudio.play().catch(()=>{if(my===speakSeq)speaking=false});
+    return;
+  }
+
+  /* 沒有對應音檔(台詞被改過、或音檔還沒載到)—— 退回瀏覽器現場合成 */
+  if(!('speechSynthesis' in window))return;
   const t=normalize(txt);
   if(!t)return;
   const u=new SpeechSynthesisUtterance(t);
@@ -817,6 +873,7 @@ function enter(i){
   chips[i].scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});
   segs.forEach((sg,k)=>{sg.classList.toggle('done',k<i);sg.querySelector('.fill').style.width='0%'});
   if('speechSynthesis' in window)speechSynthesis.cancel();
+  stopClip();
   speaking=false;
   if(!playing)setPausedVisual(true);
 }
@@ -842,7 +899,9 @@ function loop(ts){
   /* 用「再走一步之後」的時間預判,不能用當下的 t —— loop 的順序是
      判斷 hold → 推進 t → updateHUD() 切句,用 t 判斷會慢一幀,
      等發現越過切句點時 updateHUD 已經把上一句 cancel 掉了。 */
-  const willBe=t+dt*(voice?rate/1.15:1);
+  /* 除數跟著語速預設值一起調:原本是 0.85/1.15=0.74 倍速推進,
+     語速預設改成 1.0 之後要用 1.35 才維持同樣的節奏,不然畫面會突然變趕。 */
+  const willBe=t+dt*(voice?rate/1.35:1);
   let hold=voice&&speaking&&(willBe>=nextAt||willBe>=s.dur);
   /* 保險閥:語音引擎偶爾不會回報唸完(Chrome 的已知問題),沒有上限的話整支
      影片會永遠停在這一句。期限在 speak() 時依這句的字數與語速估好。 */
@@ -864,10 +923,14 @@ function togglePlay(force){
   setPausedVisual(!playing);
   if(playing){
     if('speechSynthesis' in window){try{speechSynthesis.resume()}catch(e){}}
+    /* 預錄音檔要從暫停的位置接回去,不能重播 —— 重播會讓那句從頭再唸一次 */
+    if(clipAudio.src&&clipAudio.paused&&!clipAudio.ended&&speaking)
+      clipAudio.play().catch(()=>{});
     last=performance.now();raf=requestAnimationFrame(loop);
   }else{
     cancelAnimationFrame(raf);
     if('speechSynthesis' in window){try{speechSynthesis.pause()}catch(e){}}
+    try{clipAudio.pause()}catch(e){}
   }
 }
 bigplay.onclick=()=>{
@@ -879,18 +942,27 @@ playbtn.onclick=()=>{if(!started){bigplay.onclick();return}togglePlay();};
 document.getElementById('prev').onclick=()=>jump(Math.max(0,idx-1));
 document.getElementById('next').onclick=()=>jump(Math.min(S.length-1,idx+1));
 voicebtn.onclick=()=>{voice=!voice;voicebtn.textContent=voice?'🔊':'🔇';
-  if(!voice&&'speechSynthesis' in window){speechSynthesis.cancel();speaking=false}};
+  if(!voice){
+    if('speechSynthesis' in window)speechSynthesis.cancel();
+    stopClip();speaking=false;
+  }};
 const rateEl=document.getElementById('rate'),ratelab=document.getElementById('ratelab'),
   vsel=document.getElementById('voicesel');
 function showRate(){ratelab.textContent='語速 '+(+rate.toFixed(2))+'x';}
 rateEl.value=rate;showRate();
-rateEl.oninput=()=>{rate=parseFloat(rateEl.value);showRate();localStorage.setItem('droneVidRate2',rate);};
+rateEl.oninput=()=>{rate=parseFloat(rateEl.value);showRate();localStorage.setItem('droneVidRate3',rate);
+  if(!clipAudio.paused)clipAudio.playbackRate=Math.max(.5,Math.min(2,rate));};
 rateEl.onchange=()=>{if(lineIdx>=0&&voice&&playing)speak(S[idx].lines[lineIdx][1]);};
 function popVoices(){
   if(!('speechSynthesis' in window))return;
   const ranked=rankedVoices();
   const def=defaultVoice();
-  vsel.innerHTML='<option value="">自動(挑最新的)</option>'+
+  /* 有預錄音檔時把它標在最前面。下面那串系統語音仍然列著,因為台詞被改過、
+     或音檔載不到時會退回現場合成,那時這個選擇仍然有意義。 */
+  const pre=clipMap
+    ? `<option value="">預錄旁白 · ${clipVoice.replace(/^zh-TW-/,'').replace(/Neural$/,'')}(台灣神經語音)★</option>`
+    : '<option value="">自動(挑最新的)</option>';
+  vsel.innerHTML=pre+
     ranked.map(({v})=>{
       const nm=v.name.replace(/^(Microsoft|Google|Apple)\s*/i,'').replace(/[((].*$/,'').trim();
       const sex=voiceSex(v.name), tier=voiceTier(v);
@@ -902,11 +974,12 @@ function popVoices(){
     if(hit){voiceName=hit.v.name; qVoiceDone=true;}
   }
   vsel.value=ranked.some(x=>x.v.name===voiceName)?voiceName:'';
-  /* 挑不到神經語音 —— 本機 SAPI 語音再怎麼調也差一截,直接告訴使用者現況與去哪裡拿 */
+  /* 提示只在「沒有預錄音檔、又挑不到神經語音」時才出現 ——
+     有預錄音檔時使用者聽到的本來就是神經語音,叫他去裝東西只會造成困惑。 */
   const tip=document.getElementById('voicetip');
   if(tip){
     const tier=def?voiceTier(def):null;
-    tip.style.display=(tier&&tier.t>=2)?'none':'';
+    tip.style.display=(clipMap||(tier&&tier.t>=2))?'none':'';
     const now=tip.querySelector('.now');
     if(now)now.textContent=def
       ? def.name.replace(/^(Microsoft|Google|Apple)\s*/i,'').replace(/[（(].*$/,'').trim()+'('+tier.label+')'
