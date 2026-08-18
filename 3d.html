@@ -143,9 +143,30 @@ const camera=new THREE.PerspectiveCamera(62,1,.1,120);
 scene.add(new THREE.HemisphereLight(0x9fc4ff,0x0c1a12,.95));
 const sun=new THREE.DirectionalLight(0xffffff,.55);sun.position.set(6,12,4);scene.add(sun);
 
-const floor=new THREE.Mesh(new THREE.PlaneGeometry(60,60),
-  new THREE.MeshLambertMaterial({color:0x0d1520}));
+/* 地板貼圖 —— 這不只是好看的問題。
+   真實飛行時,飛手判斷「現在多高」「有沒有橫向飄移」靠的是地面紋理的運動視差;
+   原本的地板是無特徵純色平面,等於把最主要的視覺回饋拿掉,只剩 HUD 數字可看。
+   鋪上細顆粒紋理之後,高度與側移在畫面上直接讀得出來。
+
+   貼圖是 court.jpg,由 asphalt_city 後製而成(見 gen_tex.py 的 --court):
+   直接用 asphalt 原圖會變成「黑底白點」的雜訊感 —— 它的明暗對比對這個全暗場景
+   太強,而 material.color 是等比相乘,只能整體變暗、改變不了明暗比。
+   所以在後製階段就把動態範圍壓窄並染色,顆粒只留下細微起伏。
+   (也試過直接生一張專用的運動地板,連三次都失敗:條紋 / 整座體育館俯視圖 / 顆粒過大) */
+const floorMat=new THREE.MeshLambertMaterial({color:0x0d1520});
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(60,60),floorMat);
 floor.rotation.x=-Math.PI/2;scene.add(floor);
+new THREE.TextureLoader().load('assets/tex/court.jpg',tex=>{
+  tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+  tex.repeat.set(50,50);            /* 60m 的地板鋪 50 次 → 每格約 1.2m,顆粒大小才對得上真實尺度 */
+  tex.encoding=THREE.sRGBEncoding;
+  /* 地板是大斜角視角,沒有各向異性過濾的話遠處會糊成一片,運動線索就消失了 */
+  try{tex.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy())}catch(e){}
+  floorMat.map=tex;
+  /* 顏色已經烘進貼圖了,這裡要設回白色,否則會再乘一次變得死黑 */
+  floorMat.color.setHex(0xffffff);
+  floorMat.needsUpdate=true;
+},undefined,()=>{});                /* 載不到就維持原本的純色地板 */
 const grid=new THREE.GridHelper(44,44,0x1e5c46,0x16263d);
 grid.position.y=.01;scene.add(grid);
 const postMat=new THREE.MeshLambertMaterial({color:0x22304a});
